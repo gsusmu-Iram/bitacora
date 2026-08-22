@@ -2036,8 +2036,19 @@ function sheetEvento(id){
   document.getElementById('e-cal').onclick = async () => { await guardarEvento(); menuCalendario(id); };
   document.getElementById('e-save').onclick = guardarEvento;
   document.getElementById('e-del').onclick = borrarEvento;
+  // La garantía solo se propone si el evento parece una compra: con coste o con ticket
   const gar = document.getElementById('e-gar'), fec = document.getElementById('e-fec');
-  fec.onchange = () => { if(!gar.value && fec.value){ const d = new Date(fec.value+'T00:00:00'); d.setFullYear(d.getFullYear()+2); gar.value = iso(d); } };
+  const cos = document.getElementById('e-cos'), tik = document.getElementById('e-tik');
+  const proponerGarantia = () => {
+    const esCompra = (cos.value && Number(cos.value) > 0) || tik.value.trim();
+    if(esCompra && !gar.value && fec.value){
+      const d = new Date(fec.value+'T00:00:00');
+      d.setFullYear(d.getFullYear()+2);
+      gar.value = iso(d);
+    }
+  };
+  cos.onchange = proponerGarantia;
+  tik.onchange = proponerGarantia;
 }
 async function guardarEvento(){
   const e = eventos.find(x => x.id === editando); if(!e) return cerrarSheet();
@@ -3457,27 +3468,47 @@ async function compartirCopia(){
 
 function importarCopia(){
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json,.txt,application/json,text/plain';
+  inp.type = 'file';   // sin filtro: WhatsApp y algunos gestores cambian la extensión
   inp.onchange = async () => {
     const f = inp.files[0]; if(!f) return;
-    try{
-      const d = JSON.parse(await f.text());
-      if(!d.tareas && !d.eventos && !d.notas && !d.fichas) throw new Error('formato');
-      if(!confirm('Esto reemplaza todo lo que tienes ahora. ¿Seguir?')) return;
-      tareas = d.tareas || []; eventos = d.eventos || []; notas = d.notas || []; fichas = d.fichas || [];
-      vacia = true; await Store.save('vacia:v1', true);
-      notas.forEach(x => {
-    x.tipo = x.tipo || 'texto'; x.items = x.items || [];
-    // Reparar el escapado que se acumuló en versiones anteriores
-    if(x.contenido) while(/&amp;(amp|nbsp|lt|gt|quot|#39);/i.test(x.contenido))
-      x.contenido = x.contenido.replace(/&amp;(amp|nbsp|lt|gt|quot|#39);/gi, '&$1;');
-    if(x.titulo) x.titulo = soloTexto(x.titulo);
-    x.items.forEach(i => { i.txt = soloTexto(i.txt); });
-  });
-  fichas = (fi && fi.length) ? fi : (vacia ? [] : semillaD());
-      await persistirT(); await persistirE(); await persistirN(); await persistirD();
-      cerrarSheet(); render(); aviso('Copia restaurada');
-    }catch(e){ aviso('Ese archivo no vale'); }
+    let txt;
+    try{ txt = await f.text(); }
+    catch(e){ alert('No he podido leer el archivo.'); return; }
+
+    if(txt.slice(0,2) === 'PK'){          // un .xlsx es un zip y empieza por PK
+      alert('Eso es el Excel, y el Excel solo sirve para consultar: no se puede volver a cargar.\n\n' +
+            'Para pasar datos de un aparato a otro usa "Copia de seguridad" o "Enviar copia", ' +
+            'que generan un archivo .json.');
+      return;
+    }
+
+    let d;
+    try{ d = JSON.parse(txt.replace(/^\uFEFF/, '').trim()); }
+    catch(e){
+      alert('Ese archivo no es una copia de Bitácora.\n\n' +
+            'Debe ser el .json (o .json.txt) que sale al pulsar "Copia de seguridad" o "Enviar copia".');
+      return;
+    }
+    if(!d.tareas && !d.eventos && !d.notas && !d.fichas){
+      alert('El archivo se lee bien, pero no contiene datos de Bitácora.');
+      return;
+    }
+
+    const n = (d.tareas||[]).length + (d.eventos||[]).length + (d.notas||[]).length + (d.fichas||[]).length;
+    const mio = tareas.length + eventos.length + notas.length + fichas.length;
+    if(!confirm(`La copia trae ${n} elementos y aquí tienes ${mio}.\n\n` +
+                'Al restaurar se reemplaza TODO lo de este aparato. ¿Seguir?')) return;
+
+    tareas = d.tareas || []; eventos = d.eventos || []; notas = d.notas || []; fichas = d.fichas || [];
+    vacia = true; await Store.save('vacia:v1', true);
+    notas.forEach(x => {
+      x.tipo = x.tipo || 'texto'; x.items = x.items || [];
+      if(x.contenido) while(/&amp;(amp|nbsp|lt|gt|quot|#39);/i.test(x.contenido))
+        x.contenido = x.contenido.replace(/&amp;(amp|nbsp|lt|gt|quot|#39);/gi, '&$1;');
+    });
+    await persistirT(); await persistirE(); await persistirN(); await persistirD();
+    cerrarSheet(); irA('inicio');
+    aviso(`Restaurados ${n} elementos`);
   };
   inp.click();
 }
@@ -3652,7 +3683,7 @@ function menuCopias(){
     </p>
     <button class="op" data-op="excel"><i>
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M15 9v11"/></svg></i>
-      <div><b>Excel (.xlsx)</b><span>Tres hojas: tareas, eventos y notas</span></div></button>
+      <div><b>Excel (.xlsx)</b><span>Para consultar o archivar · no se puede volver a cargar</span></div></button>
     <button class="op" data-op="ia"><i>
       <svg viewBox="0 0 24 24"><path d="M12 3v9m0 0-3.5-3.5M12 12l3.5-3.5M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
       <div><b>Exportar para IA</b><span>Eliges qué compartes; lo privado se queda</span></div></button>
@@ -3676,7 +3707,7 @@ function menuCopias(){
       <div><b>Empezar de cero</b><span>Borra todo, incluidos los ejemplos</span></div></button>
     <button class="op peligro" data-op="importar"><i>
       <svg viewBox="0 0 24 24"><path d="M12 20V8m0 0-4 4m4-4 4 4M4 4h16" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
-      <div><b>Restaurar copia</b><span>Reemplaza todo con un archivo guardado</span></div></button>`);
+      <div><b>Restaurar copia</b><span>Reemplaza todo con un .json guardado (el Excel no sirve)</span></div></button>`);
 
   document.querySelectorAll('#sheet [data-op]').forEach(b => b.onclick = () => ({
     excel:exportarExcel, csv:() => { exportarCSV(); aviso('CSV descargados'); cerrarSheet(); },
