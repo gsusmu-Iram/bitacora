@@ -723,6 +723,7 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
    ============================================================ */
 const Store = {
   persistente:false,
+  permanente:false,
   motor:'memoria',        // 'claude' | 'navegador' | 'memoria'
   _db:null,
   _mem:{},
@@ -751,6 +752,17 @@ const Store = {
       t.onsuccess = () => ok(true);
       t.onerror = () => mal(t.error);
     }));
+  },
+
+  // Pedimos al navegador que no borre estos datos por su cuenta.
+  // Ojo: no protege si el usuario borra los datos de navegación a mano.
+  async pedirPermanencia(){
+    try{
+      if(navigator.storage && navigator.storage.persist){
+        this.permanente = await navigator.storage.persisted();
+        if(!this.permanente) this.permanente = await navigator.storage.persist();
+      }
+    }catch(e){}
   },
 
   async load(key){
@@ -918,13 +930,35 @@ const ETIQUETAS = ['Sin etiqueta','Ideas','Películas','Compras','Marines','Coch
    ============================================================ */
 function pintarEstado(){
   const ok = Store.persistente;
-  document.getElementById('dot').classList.toggle('ok', ok);
-  const txt = {
+  const dot = document.getElementById('dot');
+  dot.classList.toggle('ok', ok);
+  let txt = {
     claude:    'guardado en tu cuenta · sincroniza entre dispositivos',
     navegador: 'guardado en este dispositivo',
     memoria:   'sin guardar · haz una copia antes de cerrar'
   }[Store.motor];
+
+  // Si hace mucho de la última copia, lo decimos aquí mismo
+  const d = diasSinCopia();
+  if(Store.motor === 'navegador' && d !== null && d >= 7){
+    txt = d > 60 ? 'sin copia desde hace meses · descárgala' : `sin copia desde hace ${d} días`;
+    dot.classList.remove('ok');
+  } else if(Store.motor === 'navegador' && d === null){
+    txt = 'guardado aquí · nunca has hecho una copia';
+    dot.classList.remove('ok');
+  }
   document.getElementById('storeTxt').textContent = txt;
+}
+
+let ultimaCopia = null;
+function diasSinCopia(){
+  if(!ultimaCopia) return null;
+  return Math.floor((Date.now() - new Date(ultimaCopia)) / 864e5);
+}
+async function marcarCopia(){
+  ultimaCopia = new Date().toISOString();
+  await Store.save('copia:v1', ultimaCopia);
+  pintarEstado();
 }
 
 function render(){
@@ -3433,6 +3467,7 @@ function copiaJSON(){
 
 function exportarCopia(){
   bajar(`bitacora-copia-${sello()}.json`, copiaJSON(), 'application/json');
+  marcarCopia();
   aviso('Copia descargada');
   cerrarSheet();
 }
@@ -3457,6 +3492,7 @@ async function compartirCopia(){
       title:'Copia de Bitácora',
       text:`Copia de seguridad · ${tareas.length} tareas, ${eventos.length} eventos, ${notas.length} notas, ${fichas.length} fichas`
     });
+    marcarCopia();
     cerrarSheet();
   }catch(e){
     if(e && e.name === 'AbortError') return;      // el usuario cerró el menú
@@ -3644,7 +3680,9 @@ const AYUDA = [
   ['◈', 'Proyectos',
    'Escribe un nombre de proyecto en varias tareas, eventos, notas o fichas y quedan enlazados. Desde Inicio verás su avance, lo gastado y el material que falta.'],
   ['🔒', 'Privado y copias',
-   'El interruptor "Privado" impide que algo salga en "Exportar para IA". No es cifrado: no guardes aquí contraseñas ni números de tarjeta, ni siquiera marcados. Baja una copia de vez en cuando.']
+   'El interruptor "Privado" impide que algo salga en "Exportar para IA". No es cifrado: no guardes aquí contraseñas ni números de tarjeta, ni siquiera marcados.'],
+  ['⚠️', 'Dónde viven tus datos',
+   'En este dispositivo, no en un servidor. Eso es bueno para tu privacidad, pero significa que si borras los datos de navegación del navegador, o desinstalas la app, se van con ellos. Baja una copia cada pocos días: el punto de arriba se pone en ámbar cuando hace más de una semana.']
 ];
 
 function menuAyuda(){
@@ -3679,7 +3717,11 @@ function menuCopias(){
     <h2>Bitácora · copias y exportación</h2>
     <p style="font-size:13px;color:var(--muted);margin:-4px 0 14px">
       Ahora mismo tus datos se guardan en <b>${motor}</b>.
-      ${Store.motor === 'memoria' ? 'Descarga una copia antes de cerrar.' : 'Aun así, conviene bajar una copia de vez en cuando.'}
+      ${Store.motor === 'navegador'
+        ? '<b style="color:var(--oxblood)">Si borras los datos de navegación del móvil, se borran también.</b> Baja una copia cada pocos días.'
+        : Store.motor === 'memoria' ? 'Descarga una copia antes de cerrar.' : 'Aun así, conviene bajar una copia de vez en cuando.'}
+      ${diasSinCopia() === null ? '<br><b>Nunca has hecho una copia.</b>'
+        : diasSinCopia() >= 7 ? `<br><b>Última copia: hace ${diasSinCopia()} días.</b>` : ''}
     </p>
     <button class="op" data-op="excel"><i>
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M15 9v11"/></svg></i>
@@ -3882,6 +3924,8 @@ function recibirCompartido(){
   const t = await Store.load('tareas:v1'), e = await Store.load('eventos:v1'),
         n = await Store.load('notas:v1'), fi = await Store.load('fichas:v1');
   vacia = !!(await Store.load('vacia:v1'));
+  ultimaCopia = await Store.load('copia:v1');
+  Store.pedirPermanencia();
   calSel = hoyISO();
   ajustarHueco();
   tareas = (t && t.length) ? t : (vacia ? [] : semillaT());
