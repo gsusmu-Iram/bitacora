@@ -194,6 +194,7 @@ main{padding:6px 18px 30px}
 .ev-foot span{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted);letter-spacing:.04em}
 .tag-gar{color:var(--pine)!important;border:1px solid rgba(44,95,74,.3);border-radius:99px;padding:1px 7px}
 .tag-gar.venc{color:var(--muted)!important;border-color:var(--line)}
+.tramo{color:var(--pine)!important;background:rgba(44,95,74,.09);border-radius:99px;padding:1px 7px}
 
 /* Mini calendario */
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
@@ -686,6 +687,19 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 .chip-anio[aria-pressed="true"] span{color:rgba(255,255,255,.7)}
 .grupo-op > .pie{font-size:12px;color:var(--muted);line-height:1.45;margin-top:9px;padding:0 2px}
 
+
+/* ---------- Cabecera de proyecto en Tareas ---------- */
+.proy-cab{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:14px 15px;margin-bottom:18px}
+.pc-tit{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;
+  letter-spacing:-.025em;margin-bottom:10px}
+.pc-datos{display:flex;flex-wrap:wrap;gap:14px;margin-top:9px}
+.pc-datos span{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted)}
+.pc-datos b{color:var(--ink);font-size:12px}
+.pc-enlaces{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+.pz{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--pine);
+  background:rgba(44,95,74,.09);border-radius:99px;padding:4px 11px;letter-spacing:.03em}
+
 /* Aviso */
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 76px);
   transform:translate(-50%,14px);z-index:60;background:var(--ink);color:#fff;padding:10px 17px;
@@ -853,7 +867,7 @@ const Store = {
 /* ---------- Estado ---------- */
 let vista = 'inicio';
 let tareas = [], eventos = [], notas = [], fichas = [], vacia = false;
-let filtroT = 'todas', modoE = 'mes', filtroN = 'todas', filtroD = 'todas';
+let filtroT = 'todas', modoE = 'mes', filtroN = 'todas', filtroD = 'todas', proyTareas = 'todas';
 let abiertas = new Set(), verHechas = false;
 let editando = null, editTipo = null;
 let calMes = new Date().getMonth(), calAnio = new Date().getFullYear(), calSel = null; // se fija a hoy en init
@@ -876,7 +890,8 @@ function etiquetaGrupo(f){
   const d = dias(f);
   if(d===null) return {dia:'—', txt:'sin fecha', cls:''};
   const fecha = new Date(f+'T00:00:00'), num = fecha.getDate(), m = MESES[fecha.getMonth()];
-  if(d < 0) return {dia:num, txt:`${m} · ${d===-1?'ayer':'atrasada'}`, cls:'late'};
+  if(d === -1) return {dia:num, txt:`${m} · ayer`, cls:'late'};
+  if(d < 0) return {dia:num, txt:`${m} · ${DIAS[fecha.getDay()]}`, cls:'late'};
   if(d === 0) return {dia:num, txt:`${m} · hoy`, cls:'today'};
   if(d === 1) return {dia:num, txt:`${m} · mañana`, cls:''};
   if(d < 7) return {dia:num, txt:`${m} · ${DIAS[fecha.getDay()]}`, cls:''};
@@ -949,12 +964,40 @@ function diasVisibles(){
 // Eventos del mes que se muestra (para la agenda de abajo)
 function eventosDelMes(){
   const ini = `${calAnio}-${String(calMes+1).padStart(2,'0')}-01`;
-  const fin = `${calAnio}-${String(calMes+1).padStart(2,'0')}-31`;
-  return eventos.filter(e => { const f = fechaEfectiva(e); return f && f >= ini && f <= fin; })
-    .sort((a,b) => (fechaEfectiva(a)+(a.hora||'')).localeCompare(fechaEfectiva(b)+(b.hora||'')));
+  const ultimo = new Date(calAnio, calMes+1, 0).getDate();
+  const fin = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${ultimo}`;
+  return eventos.filter(e => {
+    const f = fechaEfectiva(e); if(!f) return false;
+    if(f >= ini && f <= fin) return true;
+    // Los que empiezan antes del mes pero siguen dentro
+    const d = duraDias(e);
+    if(d > 1){ const hasta = iso(new Date(new Date(f+'T00:00:00').getTime() + (d-1)*864e5));
+      return hasta >= ini && f <= fin; }
+    return false;
+  }).sort((a,b) => (fechaEfectiva(a)+(a.hora?'1'+a.hora:'0')).localeCompare(fechaEfectiva(b)+(b.hora?'1'+b.hora:'0')));
 }
-const eventosDe = f => eventos.filter(e => fechaEfectiva(e) === f)
-  .sort((a,b) => (a.hora||'99').localeCompare(b.hora||'99'));
+// Un evento puede abarcar varios días: sale en todos ellos
+function abarca(e, f){
+  const ini = fechaEfectiva(e);
+  if(!ini) return false;
+  if(!e.fechaFin || e.fechaFin <= ini) return ini === f;
+  // Si se repite, la duración se arrastra a la vez que la fecha
+  const dur = Math.round((new Date(e.fechaFin+'T00:00:00') - new Date(e.fecha+'T00:00:00')) / 864e5);
+  const fin = iso(new Date(new Date(ini+'T00:00:00').getTime() + dur*864e5));
+  return f >= ini && f <= fin;
+}
+const duraDias = e => {
+  if(!e.fechaFin || !e.fecha || e.fechaFin <= e.fecha) return 1;
+  return Math.round((new Date(e.fechaFin+'T00:00:00') - new Date(e.fecha+'T00:00:00')) / 864e5) + 1;
+};
+const diaDe = (e, f) => {
+  const ini = fechaEfectiva(e);
+  return Math.round((new Date(f+'T00:00:00') - new Date(ini+'T00:00:00')) / 864e5) + 1;
+};
+
+// Los de todo el día van primero, como en cualquier calendario
+const eventosDe = f => eventos.filter(e => abarca(e, f))
+  .sort((a,b) => (a.hora ? 1 : 0) - (b.hora ? 1 : 0) || (a.hora||'').localeCompare(b.hora||''));
 
 async function persistirT(){ await Store.save('tareas:v1', tareas); }
 async function persistirE(){ await Store.save('eventos:v1', eventos); }
@@ -1026,13 +1069,49 @@ function render(){
    TAREAS
    ============================================================ */
 function chipsTareas(){
-  const cuenta = f => { const g=filtroT; filtroT=f; const n=padres().filter(t=>t.estado!=='hecha'&&pasaFiltroT(t)).length; filtroT=g; return n; };
-  const defs = [['todas','Todas'],['hoy','Hoy'],['semana','7 días'],['atrasadas','Atrasadas'],['sinfecha','Sin fecha']];
-  document.getElementById('chips').innerHTML = defs.map(([k,l])=>{
-    const n = cuenta(k);
-    return `<button class="chip" data-ft="${k}" aria-pressed="${filtroT===k}">${l}${n?`<span class="n">${n}</span>`:''}</button>`;
-  }).join('');
+  const proys = proyectos();
+  const pend = p => padres().filter(t => t.estado !== 'hecha' &&
+    (p === 'todas' ? true : p === 'sin' ? !t.proyecto : t.proyecto === p)).length;
+  const sinProy = padres().filter(t => t.estado !== 'hecha' && !t.proyecto).length;
+
+  let html = `<button class="chip" data-fp="todas" aria-pressed="${proyTareas==='todas'}">Todas<span class="n">${pend('todas')}</span></button>`;
+  html += proys.map(p => `<button class="chip" data-fp="${esc(p)}" aria-pressed="${proyTareas===p}">
+    ${esc(p)}${pend(p) ? `<span class="n">${pend(p)}</span>` : ''}</button>`).join('');
+  if(sinProy) html += `<button class="chip" data-fp="sin" aria-pressed="${proyTareas==='sin'}">Sin proyecto<span class="n">${sinProy}</span></button>`;
+
+  // La fecha pasa a un botón, que ya no es el criterio principal
+  const activo = filtroT !== 'todas';
+  html += `<div class="chip-sep"></div>
+    <button class="chip" id="btnFecha" aria-pressed="${activo}">
+      <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none;vertical-align:-1px;margin-right:4px">
+        <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg>
+      ${activo ? {hoy:'Hoy', semana:'7 días', atrasadas:'Atrasadas', sinfecha:'Sin fecha'}[filtroT] : 'Fecha'}</button>`;
+
+  document.getElementById('chips').innerHTML = html;
+  const bf = document.getElementById('btnFecha');
+  if(bf) bf.onclick = menuFecha;
 }
+
+function menuFecha(){
+  editando = null;
+  const defs = [['todas','Cualquier fecha'],['hoy','Hoy'],['semana','Próximos 7 días'],
+                ['atrasadas','Atrasadas'],['sinfecha','Sin fecha']];
+  const cuenta = f => { const g=filtroT; filtroT=f;
+    const n = padres().filter(t => t.estado!=='hecha' && pasaFiltroT(t) && pasaProyecto(t)).length;
+    filtroT=g; return n; };
+  abrirSheet(`<div class="grip"></div><h2>Filtrar por fecha</h2>
+    ${defs.map(([k,l]) => `<button class="op" data-fecha="${k}"
+      style="${filtroT===k?'border-color:var(--ink);background:var(--surface)':''}">
+      <i>${filtroT===k?'✓':'·'}</i><div><b>${l}</b></div>
+      <span style="flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${cuenta(k)}</span>
+    </button>`).join('')}`);
+  document.querySelectorAll('#sheet [data-fecha]').forEach(b => b.onclick = () => {
+    filtroT = b.dataset.fecha; cerrarSheet(); render();
+  });
+}
+
+const pasaProyecto = t => proyTareas === 'todas' ? true
+  : proyTareas === 'sin' ? !t.proyecto : t.proyecto === proyTareas;
 
 function filaSub(s){
   return `<div class="sub ${s.estado==='hecha'?'done':''}">
@@ -1068,21 +1147,42 @@ function filaTarea(t){
 
 function renderTareas(){
   chipsTareas();
-  const activas = padres().filter(t => t.estado !== 'hecha' && pasaFiltroT(t));
-  const hechas = padres().filter(t => t.estado === 'hecha');
+  const activas = padres().filter(t => t.estado !== 'hecha' && pasaFiltroT(t) && pasaProyecto(t));
+  const hechas = padres().filter(t => t.estado === 'hecha' && pasaProyecto(t));
   document.getElementById('tally').textContent = `${activas.length} PENDIENTES`;
   const el = document.getElementById('view-tareas');
 
+  // Al elegir un proyecto, la pantalla se convierte en ese proyecto
+  let cabecera = '';
+  if(proyTareas !== 'todas' && proyTareas !== 'sin'){
+    const r = resumenProyecto(proyTareas);
+    const enlaces = [];
+    if(r.ev.length) enlaces.push(`<button class="pz" data-pz-ev="${esc(proyTareas)}">${r.ev.length} evento${r.ev.length>1?'s':''}</button>`);
+    if(r.no.length) enlaces.push(`<button class="pz" data-pz-no="${esc(proyTareas)}">${r.no.length} nota${r.no.length>1?'s':''}</button>`);
+    if(r.fi.length) enlaces.push(`<button class="pz" data-pz-fi="${esc(proyTareas)}">${r.fi.length} ficha${r.fi.length>1?'s':''}</button>`);
+    cabecera = `<div class="proy-cab">
+      <div class="pc-tit">${esc(proyTareas)}</div>
+      <div class="barra" style="height:6px"><i style="width:${r.pct}%"></i></div>
+      <div class="pc-datos">
+        <span><b>${r.hechas}/${r.ta.length}</b> tareas</span>
+        ${r.gasto ? `<span><b>${eur(r.gasto)}</b> gastados</span>` : ''}
+        ${r.material.length ? `<span><b>${r.material.length}</b> por comprar</span>` : ''}
+      </div>
+      ${enlaces.length ? `<div class="pc-enlaces">${enlaces.join('')}</div>` : ''}
+    </div>`;
+  }
+
   if(!activas.length && !hechas.length){
-    el.innerHTML = `<div class="empty"><h2>Nada por aquí</h2><p>Escribe abajo tu primera tarea.</p></div>`; return;
+    el.innerHTML = cabecera + `<div class="empty"><h2>Nada por aquí</h2><p>Escribe abajo tu primera tarea.</p></div>`;
+    enlazarT(); return;
   }
   if(!activas.length){
-    el.innerHTML = `<div class="empty"><h2>Todo al día</h2><p>No queda nada pendiente en este filtro.</p></div>` + bloqueHechas(hechas);
+    el.innerHTML = cabecera + `<div class="empty"><h2>Todo al día</h2><p>No queda nada pendiente aquí.</p></div>` + bloqueHechas(hechas);
     enlazarT(); return;
   }
   const g = {};
   activas.forEach(t => { const k = t.fechaLimite || 'zzz'; (g[k] = g[k] || []).push(t); });
-  el.innerHTML = Object.keys(g).sort().map(k => {
+  el.innerHTML = cabecera + Object.keys(g).sort().map(k => {
     const e = etiquetaGrupo(k === 'zzz' ? null : k);
     return `<section class="group ${e.cls}">
       <div class="group-head"><div class="gday">${e.dia}</div><div class="glabel">${e.txt}</div></div>
@@ -1104,9 +1204,13 @@ function enlazarT(){
     const id=b.dataset.toggle; abiertas.has(id)?abiertas.delete(id):abiertas.add(id); render(); });
   el.querySelectorAll('[data-editt]').forEach(b => b.onclick = e => { e.stopPropagation(); sheetTarea(b.dataset.editt); });
   el.querySelectorAll('[data-addsub]').forEach(b => b.onclick = e => { e.stopPropagation(); nuevaSub(b.dataset.addsub); });
-  el.querySelectorAll('[data-verproy]').forEach(b => b.onclick = e => { e.stopPropagation(); panelProyecto(b.dataset.verproy); });
+  el.querySelectorAll('[data-verproy]').forEach(b => b.onclick = e => { e.stopPropagation(); verProyecto(b.dataset.verproy); });
   const v = el.querySelector('[data-verhechas]');
   if(v) v.onclick = () => { verHechas = !verHechas; render(); };
+  const ir = (sel, fn) => { const b = el.querySelector(sel); if(b) b.onclick = () => fn(b.dataset); };
+  ir('[data-pz-ev]', d => { consulta = d.pzEv; irA('eventos'); abrirBuscador(); });
+  ir('[data-pz-no]', d => { filtroN = 'todas'; irA('notas'); consulta = d.pzNo; abrirBuscador(); });
+  ir('[data-pz-fi]', d => { filtroD = 'todas'; irA('datos'); consulta = d.pzFi; abrirBuscador(); });
 }
 
 async function marcar(id){
@@ -1136,15 +1240,22 @@ function nuevaSub(p){ const t = prompt('Nueva subtarea:'); if(t && t.trim()) cre
 /* ============================================================
    EVENTOS
    ============================================================ */
-function filaEvento(e){
+function filaEvento(e, diaCtx){
   const pie = [];
+  const largo = duraDias(e);
+  if(largo > 1){
+    const n = diaCtx ? diaDe(e, diaCtx) : 1;
+    const f2 = new Date(iso(new Date(new Date(fechaEfectiva(e)+'T00:00:00').getTime() + (largo-1)*864e5))+'T00:00:00');
+    pie.push(`<span class="tramo">día ${n} de ${largo}</span>`);
+    if(!diaCtx) pie.push(`<span>hasta el ${f2.getDate()} ${MESES[f2.getMonth()]}</span>`);
+  }
   if(e.lugar) pie.push(`<span>${esc(e.lugar)}</span>`);
   if(e.categoria && e.categoria!=='Sin categoría') pie.push(`<span>${esc(e.categoria)}</span>`);
   if(e.ticket) pie.push(`<span>#${esc(e.ticket)}</span>`);
   if(repDe(e) !== 'no') pie.push(`<span>${REP_TEXTO(repDe(e)).toLowerCase()}</span>`);
   if(e.imagen) pie.push(`<span>📎</span>`);
   if(e.privado) pie.push(`<span>🔒</span>`);
-  if(e.proyecto) pie.push(`<span class="pr-chip">${esc(e.proyecto)}</span>`);
+  if(e.proyecto) pie.push(`<span class="pr-chip" data-verproy="${esc(e.proyecto)}">${esc(e.proyecto)}</span>`);
   if(e.garantia){
     const d = dias(e.garantia), fg = new Date(e.garantia+'T00:00:00');
     pie.push(`<span class="tag-gar ${d<0?'venc':''}">${d<0 ? 'garantía vencida'
@@ -1155,7 +1266,7 @@ function filaEvento(e){
     <div class="ev-in">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
         <div style="min-width:0;flex:1">
-          <div class="ev-hora">${e.hora ? e.hora : 'TODO EL DÍA'}</div>
+          <div class="ev-hora">${e.hora ? e.hora : (largo > 1 ? 'VARIOS DÍAS' : 'TODO EL DÍA')}</div>
           <div class="ev-tit">${esc(e.titulo)}</div>
         </div>
         ${(e.coste||e.coste===0)?`<div class="ev-coste">${eur(e.coste)}</div>`:''}
@@ -1274,7 +1385,14 @@ function vistaMes(){
   const arranque = (primero.getDay() + 6) % 7;
   const total = new Date(calAnio, calMes+1, 0).getDate();
   const conEv = {};
-  eventos.forEach(e => { const f = fechaEfectiva(e); if(f) (conEv[f] = conEv[f] || []).push(e); });
+  eventos.forEach(e => {
+    const f = fechaEfectiva(e); if(!f) return;
+    const d = duraDias(e);
+    for(let i = 0; i < d; i++){
+      const dia = iso(new Date(new Date(f+'T00:00:00').getTime() + i*864e5));
+      (conEv[dia] = conEv[dia] || []).push(e);
+    }
+  });
 
   let celdas = '';
   for(let i=0;i<arranque;i++) celdas += `<div class="cal-d out"></div>`;
@@ -1377,12 +1495,20 @@ function renderEventos(){
     html += `<div class="empty"><h2>Mes despejado</h2><p>No hay nada anotado en ${MESES_L[calMes].toLowerCase()}.</p></div>`;
   } else {
     const g = {};
-    mes.forEach(e => { const k = fechaEfectiva(e); (g[k] = g[k] || []).push(e); });
+    mes.forEach(e => {
+      const f = fechaEfectiva(e), largo = duraDias(e);
+      // Un evento largo aparece en cada día que ocupa dentro del mes
+      for(let i = 0; i < largo; i++){
+        const dia = iso(new Date(new Date(f+'T00:00:00').getTime() + i*864e5));
+        if(Number(dia.slice(5,7)) - 1 !== calMes || dia.slice(0,4) !== String(calAnio)) continue;
+        (g[dia] = g[dia] || []).push(e);
+      }
+    });
     html += Object.keys(g).sort().map(k => {
       const t = etiquetaGrupo(k);
       return `<section class="group ${t.cls}">
         <div class="group-head"><div class="gday">${t.dia}</div><div class="glabel">${t.txt}</div></div>
-        <div class="spine">${g[k].map(filaEvento).join('')}</div></section>`;
+        <div class="spine">${g[k].map(e => filaEvento(e, k)).join('')}</div></section>`;
     }).join('');
   }
 
@@ -1393,6 +1519,7 @@ function renderEventos(){
 function enlazarE(){
   const el = document.getElementById('view-eventos');
   el.querySelectorAll('[data-edite]').forEach(b => b.onclick = () => sheetEvento(b.dataset.edite));
+  el.querySelectorAll('[data-verproy]').forEach(b => b.onclick = ev => { ev.stopPropagation(); verProyecto(b.dataset.verproy); });
   el.querySelectorAll('[data-me]').forEach(b => b.onclick = () => {
     modoE = b.dataset.me;
     if(modoE !== 'mes'){ const d = new Date(calSel+'T00:00:00'); calMes = d.getMonth(); calAnio = d.getFullYear(); }
@@ -1588,7 +1715,7 @@ function renderInicio(){
   el.querySelectorAll('[data-abrir-ev]').forEach(b => b.onclick = () => sheetEvento(b.dataset.abrirEv));
   el.querySelectorAll('[data-abrir-ta]').forEach(b => b.onclick = () => sheetTarea(b.dataset.abrirTa));
   el.querySelectorAll('[data-abrir-no]').forEach(b => b.onclick = () => abrirEditor(b.dataset.abrirNo));
-  el.querySelectorAll('[data-proy]').forEach(b => b.onclick = () => panelProyecto(b.dataset.proy));
+  el.querySelectorAll('[data-proy]').forEach(b => b.onclick = () => verProyecto(b.dataset.proy));
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
   if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
@@ -1642,6 +1769,7 @@ function tarjetaNota(n){
   if(n.etiqueta && n.etiqueta !== 'Sin etiqueta') pie.push(`<span class="n-eti">${esc(n.etiqueta)}</span>`);
   if(f) pie.push(`<span class="n-fec">${f.getDate()} ${MESES[f.getMonth()]}</span>`);
   if(n.privado) pie.push(`<span class="n-fec">🔒</span>`);
+  if(n.proyecto) pie.push(`<span class="n-eti" data-verproy="${esc(n.proyecto)}" style="color:var(--pine)">◈ ${esc(n.proyecto)}</span>`);
 
   let cuerpo = '';
   if(n.tipo === 'lista'){
@@ -1979,6 +2107,7 @@ function enlazarN(){
     n.fija = !n.fija; render(); await persistirN();
   });
   el.querySelectorAll('[data-asa]').forEach(a => a.addEventListener('pointerdown', iniciarArrastre));
+  el.querySelectorAll('[data-verproy]').forEach(b => b.onclick = e => { e.stopPropagation(); verProyecto(b.dataset.verproy); });
 }
 
 function iniciarArrastre(e){
@@ -2116,6 +2245,8 @@ function sheetEvento(id){
       <div class="field"><label>Fecha</label><input id="e-fec" type="date" value="${e.fecha||''}"></div>
       <div class="field"><label>Hora</label><input id="e-hora" type="time" value="${e.hora||''}"></div>
     </div>
+    <div class="field"><label>Hasta (si dura varios días)</label>
+      <input id="e-fin" type="date" value="${e.fechaFin||''}"></div>
     <div class="field"><label>Repetición</label><select id="e-rep">
       ${REPETICIONES.map(r=>`<option value="${r.k}" ${repDe(e)===r.k?'selected':''}>${r.l}</option>`).join('')}</select></div>
     <div class="field"><label>Categoría</label><select id="e-cat">
@@ -2167,6 +2298,8 @@ async function guardarEvento(){
   e.titulo = tit;
   e.fecha = document.getElementById('e-fec').value || null;
   e.hora = document.getElementById('e-hora').value || '';
+  const fin = document.getElementById('e-fin').value || '';
+  e.fechaFin = (fin && e.fecha && fin > e.fecha) ? fin : '';
   e.todoDia = !e.hora;
   e.repite = document.getElementById('e-rep').value;
   e.anual = e.repite === 'anual';   // se mantiene por compatibilidad
@@ -2244,7 +2377,7 @@ function renderDatos(){
       <button class="ficha-cab" data-abrirf="${f.id}">
         <span class="ficha-ico">${ICONOS[f.grupo] || '📋'}</span>
         <span class="ficha-t"><b>${esc(f.titulo)}</b>
-          <span>${esc(f.grupo)}${campos.length?` · ${campos.length} dato${campos.length===1?'':'s'}`:''}</span></span>
+          <span>${esc(f.grupo)}${campos.length?` · ${campos.length} dato${campos.length===1?'':'s'}`:''}${f.proyecto?` · ◈ ${esc(f.proyecto)}`:''}</span></span>
         <svg class="ficha-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="ficha-campos">
@@ -2904,6 +3037,14 @@ function tarjetaProyecto(r){
   </button>`;
 }
 
+// Ver un proyecto ya no es una ventana: es la pantalla de Tareas filtrada
+function verProyecto(nom){
+  proyTareas = nom;
+  filtroT = 'todas';
+  cerrarSheet();
+  irA('tareas');
+}
+
 function panelProyecto(nom){
   const r = resumenProyecto(nom);
   editando = null;
@@ -3257,7 +3398,7 @@ function eventoICS(e, avisoMin){
     L.push(`DTSTART;TZID=Europe/Madrid:${ini}`);
     L.push(`DTEND;TZID=Europe/Madrid:${finS}`);
   } else {
-    const sig = new Date(a, m-1, d+1);
+    const sig = new Date(a, m-1, d + duraDias(e));   // el final es exclusivo
     L.push(`DTSTART;VALUE=DATE:${a}${String(m).padStart(2,'0')}${String(d).padStart(2,'0')}`);
     L.push(`DTEND;VALUE=DATE:${sig.getFullYear()}${String(sig.getMonth()+1).padStart(2,'0')}${String(sig.getDate()).padStart(2,'0')}`);
   }
@@ -3502,8 +3643,8 @@ function tablas(a){
         t.prioridad, t.fechaLimite || '', t.estado, t.notas || ''])
     ],
     Eventos: [
-      ['ID','Fecha','Hora','Evento','Proyecto','Categoría','Lugar','Ticket','Coste','Garantía hasta','Repite','Estado','Notas'],
-      ...eventosA.map(e => [e.id, e.fecha || '', e.hora || '', e.titulo, e.proyecto || '', e.categoria, e.lugar || '',
+      ['ID','Fecha','Hasta','Hora','Evento','Proyecto','Categoría','Lugar','Ticket','Coste','Garantía hasta','Repite','Estado','Notas'],
+      ...eventosA.map(e => [e.id, e.fecha || '', e.fechaFin || '', e.hora || '', e.titulo, e.proyecto || '', e.categoria, e.lugar || '',
         e.ticket || '', (e.coste ?? ''), e.garantia || '', repDe(e)==='no' ? '' : REP_TEXTO(repDe(e)),
         e.estado || '', e.notas || ''])
     ],
@@ -3938,13 +4079,15 @@ function cotejar(hojas){
   if(hE && hE.length > 1){
     const cab = cabecera(hE[0]);
     const c = n => col(cab, n);
-    const iId=c('ID'), iFec=c('Fecha'), iHor=c('Hora'), iTit=c('Evento'), iPro=c('Proyecto'), iCat=c('Categoria'),
+    const iId=c('ID'), iFec=c('Fecha'), iFin=cab.findIndex(x => x === 'hasta'), iHor=c('Hora'),
+          iTit=c('Evento'), iPro=c('Proyecto'), iCat=c('Categoria'),
           iLug=c('Lugar'), iTik=c('Ticket'), iCos=c('Coste'), iGar=c('Garantia'), iRep=c('Repite'),
           iEst=c('Estado'), iNot=c('Notas');
     hE.slice(1).forEach(f => {
       const tit = (f[iTit]||'').trim(); if(!tit) return;
       const fec = normFecha(f[iFec]);
-      const campos = {titulo:tit, fecha:fec||null, hora:normHora(f[iHor]), todoDia:!normHora(f[iHor]),
+      const campos = {titulo:tit, fecha:fec||null, fechaFin: iFin>=0 ? (normFecha(f[iFin])||'') : '',
+        hora:normHora(f[iHor]), todoDia:!normHora(f[iHor]),
         categoria:f[iCat]||'Sin categoría', lugar:f[iLug]||'', ticket:f[iTik]||'',
         coste:f[iCos]===''||f[iCos]===undefined ? null : Number(String(f[iCos]).replace(',','.')),
         garantia:normFecha(f[iGar])||'', repite:repDesdeTexto(f[iRep]),
@@ -4300,9 +4443,9 @@ const AYUDA = [
   ['🏠', 'Inicio · tu aviso',
    'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador: si algo tiene fecha y está cerca, sale aquí, sea evento, tarea o subtarea. Arriba "Ahora" (lo vencido y lo de hoy), luego los próximos 7 días agrupados, y después proyectos, listas y notas fijadas. Si no hay nada urgente, te lo dice y se queda en silencio.'],
   ['📅', 'Eventos',
-   'Cuatro vistas: Mes, 3 días, 1 día y Gastos. Cada evento admite hora, lugar, coste, ticket, garantía y repetición. El botón "Añadir al calendario" lo manda a la app de tu móvil, que sí puede avisarte.'],
+   'Cuatro vistas: Mes, 3 días, 1 día y Gastos. Cada evento admite hora, lugar, coste, ticket, garantía y repetición. Si dura varios días, rellena "Hasta" y aparecerá en todos ellos indicando "día 3 de 7". El botón "Añadir al calendario" lo manda a la app de tu móvil, que sí puede avisarte.'],
   ['✓', 'Tareas',
-   'Con subtareas: despliega una tarea desde el contador de la derecha. Al completar una tarea padre la app recuerda cómo estaban sus subtareas, así que si la restauras vuelven a su sitio.'],
+   'La fila de arriba son tus proyectos: tocas uno y la pantalla se convierte en él, con su avance, lo gastado y enlaces a sus eventos, notas y fichas. Dentro, las tareas padre con sus subtareas: despliega desde el contador de la derecha. Al completar una tarea padre la app recuerda cómo estaban sus subtareas, así que si la restauras vuelven a su sitio. El filtro por fecha está en el botón del calendario, al final de la fila.'],
   ['📝', 'Notas',
    'Tarjetas de colores, reordenables arrastrando desde los puntitos. Pueden ser texto con formato o listas con casillas, que puedes marcar sin abrirlas. El botón verde de abajo crea una lista nueva.'],
   ['📋', 'Datos',
@@ -4314,7 +4457,7 @@ const AYUDA = [
   ['➕', 'La barra de abajo',
    'Escribe y pulsa +: se abre la ficha para completarla, y solo se guarda si le das a Guardar. Entiende la fecha en la frase: "ITV Llíria mañana 16:15" o "Dentista el jueves a las 10".'],
   ['◈', 'Proyectos',
-   'Escribe un nombre de proyecto en varias tareas, eventos, notas o fichas y quedan enlazados. Desde Inicio verás su avance, lo gastado y el material que falta.'],
+   'Escribe un nombre de proyecto en varias tareas, eventos, notas o fichas y quedan enlazados. La etiqueta ◈ es tocable desde cualquier módulo y te lleva a la pantalla del proyecto, donde ves su avance, lo gastado, el material pendiente y todo lo suyo repartido por los demás módulos.'],
   ['🔒', 'Privado y copias',
    'El interruptor "Privado" impide que algo salga en "Exportar para IA". No es cifrado: no guardes aquí contraseñas ni números de tarjeta, ni siquiera marcados.'],
   ['📊', 'Excel · para trabajar',
@@ -4585,8 +4728,10 @@ document.getElementById('listaBtn').onclick = () => {
 document.getElementById('quick').addEventListener('keydown', e => { if(e.key === 'Enter') añadirRapido(); });
 
 document.getElementById('chips').addEventListener('click', e => {
-  const t = e.target.closest('[data-ft]'), n = e.target.closest('[data-fn]'), d = e.target.closest('[data-fd]');
+  const t = e.target.closest('[data-ft]'), n = e.target.closest('[data-fn]'),
+        d = e.target.closest('[data-fd]'), p = e.target.closest('[data-fp]');
   if(t){ filtroT = t.dataset.ft; render(); }
+  if(p){ proyTareas = p.dataset.fp; render(); }
   if(n){ filtroN = n.dataset.fn; render(); }
   if(d){ filtroD = d.dataset.fd; render(); }
 });
