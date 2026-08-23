@@ -433,6 +433,8 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 .dia-cab{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--muted);margin:12px 0 6px 2px}
 .dia-cab:first-child{margin-top:2px}
+.ver-mas{width:100%;padding:10px;font-size:13px;color:var(--muted);font-weight:500;
+  border:1px dashed var(--line);border-radius:11px;margin-top:4px}
 .respira{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:20px 16px;text-align:center}
 .respira b{display:block;font-size:14.5px;font-weight:600;margin-bottom:3px}
@@ -1467,15 +1469,20 @@ function renderInicio(){
   });
 
   const dd = x => dias(x.fecha);
-  const ahora = conFecha.filter(x => dd(x) <= 0)
-    .sort((a,b) => (a.fecha.localeCompare(b.fecha)) || (b.alta?1:0)-(a.alta?1:0) || (a.hora||'99').localeCompare(b.hora||'99'));
+  // Primero lo de hoy por horas; después lo vencido, de lo más reciente a lo más viejo
+  const deHoy = conFecha.filter(x => dd(x) === 0)
+    .sort((a,b) => (a.hora||'99').localeCompare(b.hora||'99') || (b.alta?1:0)-(a.alta?1:0));
+  const vencido = conFecha.filter(x => dd(x) < 0)
+    .sort((a,b) => b.fecha.localeCompare(a.fecha) || (b.alta?1:0)-(a.alta?1:0));
+  const ahora = [...deHoy, ...vencido];
   const semana = conFecha.filter(x => dd(x) > 0 && dd(x) <= 7)
     .sort((a,b) => a.fecha.localeCompare(b.fecha) || (a.hora||'99').localeCompare(b.hora||'99'));
 
   const padres = tareas.filter(t => !t.parentId);
   const pendientes = padres.filter(t => t.estado !== 'hecha');
+  // Cuentan solo tareas, porque el destino de los tres botones es Tareas
   const atrasadas = ahora.filter(x => x.tipo === 'tarea' && dd(x) < 0);
-  const paraHoy = ahora.filter(x => dd(x) === 0);
+  const paraHoy = ahora.filter(x => x.tipo === 'tarea' && dd(x) === 0);
 
   const proys = proyectos().map(resumenProyecto).filter(r => r.activo);
   const listas = notas.filter(n => n.tipo === 'lista' && (n.items||[]).some(i => !i.hecho));
@@ -1507,10 +1514,19 @@ function renderInicio(){
     <button class="mrk" data-ir="tareas"><b>${proys.length}</b><span>proyecto${proys.length===1?'':'s'}</span></button>
   </div>`;
 
-  // ---- AHORA: lo vencido y lo de hoy, todo junto ----
+  // ---- AHORA: lo de hoy y lo vencido ----
   if(ahora.length){
-    html += `<div class="bloque"><div class="bloque-cab alerta"><h3>Ahora</h3></div>
-      ${ahora.map(fila).join('')}</div>`;
+    const TOPE = 8;
+    const visibles = verTodoAhora ? ahora : ahora.slice(0, TOPE);
+    const ocultos = ahora.length - visibles.length;
+    html += `<div class="bloque"><div class="bloque-cab alerta"><h3>Ahora</h3>
+        ${ahora.length > 1 ? `<span class="ir" style="color:var(--muted)">${ahora.length}</span>` : ''}</div>
+      ${deHoy.length ? visibles.filter(x => dd(x) === 0).map(fila).join('') : ''}
+      ${vencido.length ? `<div class="dia-cab" style="color:var(--oxblood)">Vencido</div>` : ''}
+      ${visibles.filter(x => dd(x) < 0).map(fila).join('')}
+      ${ocultos > 0 ? `<button class="ver-mas" data-vermas>Ver ${ocultos} más</button>` : ''}
+      ${verTodoAhora && ahora.length > TOPE ? `<button class="ver-mas" data-vermenos>Ver menos</button>` : ''}
+    </div>`;
   } else {
     html += `<div class="bloque"><div class="respira">
       <b>Nada pendiente para hoy</b><span>Lo que tenga fecha aparecerá aquí</span></div></div>`;
@@ -1573,6 +1589,9 @@ function renderInicio(){
   el.querySelectorAll('[data-abrir-ta]').forEach(b => b.onclick = () => sheetTarea(b.dataset.abrirTa));
   el.querySelectorAll('[data-abrir-no]').forEach(b => b.onclick = () => abrirEditor(b.dataset.abrirNo));
   el.querySelectorAll('[data-proy]').forEach(b => b.onclick = () => panelProyecto(b.dataset.proy));
+  const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
+  if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
+  if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
   el.querySelectorAll('[data-editn]').forEach(b => b.onclick = () => abrirEditor(b.dataset.editn));
   el.querySelectorAll('[data-item]').forEach(b => b.onclick = async e => {
     e.stopPropagation();
@@ -1932,7 +1951,7 @@ async function borrarDesdeEditor(){
 
 /* ---------- Reordenar arrastrando por el asa ---------- */
 let llevando = null, destino = null;
-let recien = null, recienTimer = null;
+let recien = null, recienTimer = null, verTodoAhora = false;
 
 function destacar(id){
   recien = id;
