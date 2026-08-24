@@ -1,6 +1,6 @@
 /* Bitácora — funcionamiento sin conexión.
    Sube la versión cada vez que cambies index.html para forzar la actualización. */
-const VERSION = 'bitacora-v15';
+const VERSION = 'bitacora-v17';
 const ESENCIALES = [
   './',
   './index.html',

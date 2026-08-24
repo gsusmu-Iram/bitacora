@@ -700,6 +700,59 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 .pz{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--pine);
   background:rgba(44,95,74,.09);border-radius:99px;padding:4px 11px;letter-spacing:.03em}
 
+.pie-ayuda{font-family:"JetBrains Mono",monospace;font-size:9.5px;color:var(--muted);
+  text-align:center;padding:16px 0 4px;letter-spacing:.06em;line-height:1.7;
+  border-top:1px solid var(--line);margin-top:14px}
+.pie-ayuda .ver{font-size:12px;color:var(--ink);margin-bottom:3px}
+.pie-ayuda .ver b{font-weight:600}
+
+.pie-ver{border-top:1px solid var(--line);margin-top:16px;padding-top:12px}
+.pie-ver .linea{display:flex;justify-content:space-between;gap:12px;padding:5px 0;
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted)}
+.pie-ver .linea b{color:var(--ink);font-weight:600}
+.aviso-ver{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted);
+  background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 11px;line-height:1.5}
+.aviso-ver.ok{color:var(--pine);border-color:rgba(44,95,74,.3)}
+.aviso-ver.nueva{color:var(--gold);border-color:rgba(176,128,42,.4)}
+.aviso-ver button{display:block;margin-top:8px;background:var(--ink);color:#fff;
+  padding:8px 14px;border-radius:9px;font-size:12px;font-weight:600;font-family:"Instrument Sans",sans-serif}
+
+
+/* ---------- Inicio: alarma y filas compactas ---------- */
+.alarma{display:flex;align-items:flex-start;gap:13px;background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  padding:15px 16px;margin-bottom:18px;width:100%;text-align:left}
+.alarma.suena{border-color:rgba(142,47,38,.4);background:#FFFAF9}
+.alarma .campana{flex:none;width:40px;height:40px;border-radius:12px;display:grid;
+  place-items:center;background:var(--paper);font-size:19px}
+.alarma.suena .campana{background:rgba(142,47,38,.1)}
+.alarma .txt{flex:1;min-width:0}
+.alarma .txt b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;
+  font-size:17px;letter-spacing:-.015em;line-height:1.25;margin-bottom:3px}
+.alarma.suena .txt b{color:var(--oxblood)}
+.alarma .txt span{display:block;font-size:13px;color:var(--muted);line-height:1.4}
+.alarma .flecha{flex:none;align-self:center;width:16px;height:16px;stroke:var(--muted);
+  stroke-width:2;fill:none;opacity:.45}
+
+.p-fila{display:flex;align-items:center;gap:12px;padding:11px 2px;
+  border-bottom:1px solid var(--line);width:100%;text-align:left}
+.p-fila:last-child{border-bottom:none}
+.p-fila .marca{flex:none;width:4px;height:30px;border-radius:99px}
+.p-fila .cuerpo{flex:1;min-width:0}
+.p-fila .cuerpo b{display:block;font-weight:500;font-size:15px;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-fila .cuerpo span{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;
+  color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p-fila .cuando{flex:none;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+.p-fila .cuando.rojo{color:var(--oxblood);font-weight:600}
+.p-check{flex:none;width:18px;height:18px;border-radius:6px;border:1.6px solid var(--line);background:#fff}
+.tarj{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:3px 14px;margin-bottom:9px}
+.sub-rot{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin:16px 0 7px 2px}
+.sub-rot.rojo{color:var(--oxblood)}
+.sub-rot.dia{color:var(--ink);margin-top:10px}
+
 /* Aviso */
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 76px);
   transform:translate(-50%,14px);z-index:60;background:var(--ink);color:#fff;padding:10px 17px;
@@ -872,8 +925,34 @@ let abiertas = new Set(), verHechas = false;
 let editando = null, editTipo = null;
 let calMes = new Date().getMonth(), calAnio = new Date().getFullYear(), calSel = null; // se fija a hoy en init
 
-const CATEGORIAS = ['Sin categoría','Trámites','Finanzas','Salud','Trabajo','Casa','Marines','Coche','Compras','Ocio','Personal'];
-const CAT_EV = ['Sin categoría','Viaje','Salud','Familia','Trabajo','Marines','Coche','Ocio','Trámites','Compras'];
+// Una sola lista de categorías para los cuatro módulos
+const CATEGORIAS_BASE = ['Sin categoría','Casa','Marines','Coche','Familia','Salud','Trabajo',
+  'Trámites','Finanzas','Compras','Ocio','Películas','Recetas','Documentos','Medidas','Personal'];
+
+// Un campo abierto: eliges de la lista o escribes una nueva
+function campoCategoria(id, valor){
+  return `<div class="field"><label>Categoría</label>
+    <input id="${id}" list="listaCat" value="${esc(valor && valor !== 'Sin categoría' ? valor : '')}"
+      placeholder="Sin categoría · o escribe una nueva">
+    <datalist id="listaCat">${categorias().filter(c => c !== 'Sin categoría')
+      .map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>`;
+}
+const leerCategoria = id => {
+  const i = document.getElementById(id);
+  const v = i ? i.value.trim() : '';
+  return v || 'Sin categoría';
+};
+
+// A las de serie se suman las que hayas escrito tú
+function categorias(){
+  const usadas = new Set();
+  [...tareas, ...eventos, ...fichas].forEach(x => { if(x.categoria) usadas.add(x.categoria); });
+  notas.forEach(n => { if(n.categoria) usadas.add(n.categoria); else if(n.etiqueta) usadas.add(n.etiqueta); });
+  const extra = [...usadas].filter(c => c && c !== 'Sin categoría' && !CATEGORIAS_BASE.includes(c)).sort();
+  return [...CATEGORIAS_BASE, ...extra];
+}
+
+const VERSION_APP = 'v17';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -950,9 +1029,21 @@ function pasaFiltroT(t){
 function sumaDias(f,n){ const d = new Date(f+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); }
 
 // Colores por categoría (barra, punto y bloque horario)
-const COLOR_CAT = {viaje:'#2F6F8F', salud:'#8E2F26', familia:'#8A5FA8', trabajo:'#4A5D8A',
-  marines:'#2C5F4A', coche:'#B0802A', ocio:'#C2743F', 'trámites':'#5C7A6E', compras:'#7A6A9E'};
-const colorCat = c => COLOR_CAT[(c||'').toLowerCase()] || '#6E7B74';
+const COLOR_CAT = {
+  casa:'#3E6E8E', marines:'#2C5F4A', coche:'#B0802A', familia:'#8A5FA8', salud:'#8E2F26',
+  trabajo:'#4A5D8A', 'trámites':'#5C7A6E', tramites:'#5C7A6E', finanzas:'#2F6F8F',
+  compras:'#7A6A9E', ocio:'#C2743F', 'películas':'#9B4A6B', peliculas:'#9B4A6B',
+  recetas:'#A8632F', documentos:'#6B6F7A', medidas:'#4E7A6A', personal:'#7C6A5A'
+};
+// Las categorías que añadas tú reciben un color estable, sacado de su nombre
+function colorCat(c){
+  const k = (c||'').toLowerCase();
+  if(COLOR_CAT[k]) return COLOR_CAT[k];
+  if(!k || k === 'sin categoría') return '#6E7B74';
+  let h = 0;
+  for(const ch of k) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `hsl(${h} 34% 42%)`;
+}
 
 // Días visibles según el modo
 function diasVisibles(){
@@ -1010,7 +1101,7 @@ const COLORES_NOTA = [
   {k:'menta', c:'#DBEBE2'}, {k:'ocre', c:'#EFE4C9'}
 ];
 const colorNota = k => (COLORES_NOTA.find(x => x.k === k) || COLORES_NOTA[0]).c;
-const ETIQUETAS = ['Sin etiqueta','Ideas','Películas','Compras','Marines','Coche','Casa','Recetas','Regalos','Trabajo','Personal'];
+
 
 /* ============================================================
    RENDER COMÚN
@@ -1127,6 +1218,7 @@ function filaTarea(t){
   if(t.notas) meta.push(`<span>nota</span>`);
   if(t.imagen) meta.push(`<span>📎</span>`);
   if(t.privado) meta.push(`<span>🔒</span>`);
+  if(t.enInicio) meta.push(`<span>🧭</span>`);
   if(t.proyecto) meta.push(`<span class="pr-chip" data-verproy="${esc(t.proyecto)}">${esc(t.proyecto)}</span>`);
   return `<article class="task ${t.estado==='hecha'?'done':''} ${abiertas.has(t.id)?'open':''} ${recien===t.id?'recien':''}">
     <div class="task-main">
@@ -1580,132 +1672,140 @@ function irA(v){
 function renderInicio(){
   const hoy = hoyISO(), d = new Date(hoy+'T00:00:00');
 
-  // Todo lo que tiene fecha, venga de donde venga: la regla de la pantalla
+  // Regla única: lo que tiene fecha entra solo; lo demás lo anclas tú
   const conFecha = [];
   eventos.filter(e => e.estado !== 'cancelado').forEach(e => {
     const f = fechaEfectiva(e);
     if(f) conFecha.push({tipo:'evento', id:e.id, fecha:f, hora:e.hora||'', titulo:e.titulo,
-      color:colorCat(e.categoria), extra:e.lugar||'', obj:e});
+      color:colorCat(e.categoria), extra:e.lugar||'',
+      tramo: duraDias(e) > 1 ? `día ${diaDe(e, f >= hoy ? f : hoy)} de ${duraDias(e)}` : ''});
   });
-  tareas.filter(t => t.estado !== 'hecha').forEach(t => {
-    if(!t.fechaLimite) return;
+  tareas.filter(t => t.estado !== 'hecha' && t.fechaLimite).forEach(t => {
     const padre = t.parentId ? (tareas.find(x => x.id === t.parentId)||{}).titulo : '';
     conFecha.push({tipo:'tarea', id:t.id, fecha:t.fechaLimite, hora:'', titulo:t.titulo,
       color: t.prioridad==='Alta' ? 'var(--oxblood)' : t.prioridad==='Media' ? 'var(--gold)' : 'var(--muted)',
-      extra: padre || t.proyecto || '', alta: t.prioridad==='Alta', obj:t});
+      extra: padre || t.proyecto || '', alta: t.prioridad==='Alta'});
   });
 
   const dd = x => dias(x.fecha);
-  // Primero lo de hoy por horas; después lo vencido, de lo más reciente a lo más viejo
   const deHoy = conFecha.filter(x => dd(x) === 0)
-    .sort((a,b) => (a.hora||'99').localeCompare(b.hora||'99') || (b.alta?1:0)-(a.alta?1:0));
+    .sort((a,b) => (a.hora?1:0)-(b.hora?1:0) || (a.hora||'').localeCompare(b.hora||''));
   const vencido = conFecha.filter(x => dd(x) < 0)
     .sort((a,b) => b.fecha.localeCompare(a.fecha) || (b.alta?1:0)-(a.alta?1:0));
-  const ahora = [...deHoy, ...vencido];
   const semana = conFecha.filter(x => dd(x) > 0 && dd(x) <= 7)
-    .sort((a,b) => a.fecha.localeCompare(b.fecha) || (a.hora||'99').localeCompare(b.hora||'99'));
+    .sort((a,b) => a.fecha.localeCompare(b.fecha) || (a.hora?1:0)-(b.hora?1:0) || (a.hora||'').localeCompare(b.hora||''));
+  const reclaman = deHoy.length + vencido.length;
 
-  const padres = tareas.filter(t => !t.parentId);
-  const pendientes = padres.filter(t => t.estado !== 'hecha');
-  // Cuentan solo tareas, porque el destino de los tres botones es Tareas
-  const atrasadas = ahora.filter(x => x.tipo === 'tarea' && dd(x) < 0);
-  const paraHoy = ahora.filter(x => x.tipo === 'tarea' && dd(x) === 0);
-
-  const proys = proyectos().map(resumenProyecto).filter(r => r.activo);
-  const listas = notas.filter(n => n.tipo === 'lista' && (n.items||[]).some(i => !i.hecho));
-  const fijadas = notas.filter(n => n.fija && n.tipo !== 'lista');
+  // Lo anclado a mano, de cualquier módulo
+  const anclado = [
+    ...tareas.filter(t => t.enInicio && t.estado !== 'hecha').map(t => ({t:'tarea', o:t})),
+    ...notas.filter(n => n.enInicio).map(n => ({t:'nota', o:n})),
+    ...fichas.filter(f => f.enInicio).map(f => ({t:'ficha', o:f}))
+  ];
 
   document.getElementById('tally').textContent = '';
 
-  // Una línea por cosa: sirve igual para eventos, tareas y subtareas
   const fila = x => {
     const n = dd(x);
-    const cuando = n < 0 ? (n === -1 ? 'ayer' : `hace ${-n} d`) : x.hora || (x.tipo==='evento' ? 'todo el día' : 'hoy');
-    return `<button class="res ${n < 0 ? 'urgente' : ''}" data-abrir-${x.tipo==='evento'?'ev':'ta'}="${x.id}">
-      <div class="res-bar" style="background:${x.color}"></div>
-      <div class="res-in">
-        <span class="res-t">${x.tipo==='tarea' ? '<i class="mini-check"></i>' : ''}${esc(x.titulo)}
-          ${x.extra ? `<span class="res-sub">${esc(x.extra)}</span>` : ''}</span>
-        <span class="res-x ${n<0?'rojo':''}">${cuando}</span>
-      </div></button>`;
+    const cuando = n < 0 ? (n === -1 ? 'ayer' : `hace ${-n} d`)
+      : x.hora || (x.tipo === 'evento' ? 'todo el día' : '');
+    const izq = x.tipo === 'tarea' ? '<span class="p-check"></span>'
+      : `<span class="marca" style="background:${x.color}"></span>`;
+    const sub = [x.extra, x.tramo].filter(Boolean).join(' · ');
+    return `<button class="p-fila" data-abrir-${x.tipo === 'evento' ? 'ev' : 'ta'}="${x.id}">
+      ${izq}<span class="cuerpo"><b>${esc(x.titulo)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</span>
+      <span class="cuando ${n < 0 ? 'rojo' : ''}">${cuando}</span></button>`;
   };
+
+  // ---- La alarma, en una frase ----
+  let frase, detalle;
+  if(reclaman){
+    frase = `${reclaman} ${reclaman === 1 ? 'cosa te reclama' : 'cosas te reclaman'}`;
+    const partes = [];
+    if(deHoy.length) partes.push(`${deHoy.length} para hoy`);
+    if(vencido.length){
+      const v = -dd(vencido[vencido.length - 1]);
+      partes.push(`${vencido.length} ${vencido.length===1?'vencida':'vencidas'}${
+        v > 1 ? `, la más antigua de hace ${v} días` : ''}`);
+    }
+    detalle = partes.join(' · ');
+  } else {
+    frase = 'Nada te reclama hoy';
+    const sig = semana[0] || conFecha.filter(x => dd(x) > 0).sort((a,b) => a.fecha.localeCompare(b.fecha))[0];
+    if(sig){
+      const f = new Date(sig.fecha+'T00:00:00'), n = dias(sig.fecha);
+      detalle = `Lo siguiente${n === 1 ? ' es mañana' : ` es el ${DIAS[f.getDay()]}`}: ${sig.titulo}`;
+    } else detalle = 'No tienes nada con fecha por delante';
+  }
 
   let html = `<div class="hoy-cab">
     <div class="hoy-fecha">${DIAS[d.getDay()].charAt(0).toUpperCase()+DIAS[d.getDay()].slice(1)}, ${d.getDate()} de ${MESES_L[d.getMonth()].toLowerCase()}</div>
-    <div class="hoy-sub">${ahora.length ? ahora.length + (ahora.length===1?' cosa por delante':' cosas por delante') : 'nada urgente hoy'}</div>
-  </div>`;
+  </div>
+  <button class="alarma ${reclaman ? 'suena' : ''}" ${reclaman ? 'data-ir="tareas"' : ''}>
+    <span class="campana">${reclaman ? '🔔' : '🧭'}</span>
+    <span class="txt"><b>${frase}</b><span>${esc(detalle)}</span></span>
+    ${reclaman ? `<svg class="flecha" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+  </button>`;
 
-  html += `<div class="marcador">
-    <button class="mrk ${atrasadas.length?'alerta':''}" data-ir="tareas"><b>${atrasadas.length}</b><span>atrasadas</span></button>
-    <button class="mrk" data-ir="tareas"><b>${paraHoy.length}</b><span>para hoy</span></button>
-    <button class="mrk" data-ir="tareas"><b>${proys.length}</b><span>proyecto${proys.length===1?'':'s'}</span></button>
-  </div>`;
+  if(deHoy.length) html += `<div class="sub-rot">Hoy</div><div class="tarj">${deHoy.map(fila).join('')}</div>`;
 
-  // ---- AHORA: lo de hoy y lo vencido ----
-  if(ahora.length){
-    const TOPE = 8;
-    const visibles = verTodoAhora ? ahora : ahora.slice(0, TOPE);
-    const ocultos = ahora.length - visibles.length;
-    html += `<div class="bloque"><div class="bloque-cab alerta"><h3>Ahora</h3>
-        ${ahora.length > 1 ? `<span class="ir" style="color:var(--muted)">${ahora.length}</span>` : ''}</div>
-      ${deHoy.length ? visibles.filter(x => dd(x) === 0).map(fila).join('') : ''}
-      ${vencido.length ? `<div class="dia-cab" style="color:var(--oxblood)">Vencido</div>` : ''}
-      ${visibles.filter(x => dd(x) < 0).map(fila).join('')}
+  if(vencido.length){
+    const TOPE = 6;
+    const ver = verTodoAhora ? vencido : vencido.slice(0, TOPE);
+    const ocultos = vencido.length - ver.length;
+    html += `<div class="sub-rot rojo">Vencido · ${vencido.length}</div>
+      <div class="tarj">${ver.map(fila).join('')}</div>
       ${ocultos > 0 ? `<button class="ver-mas" data-vermas>Ver ${ocultos} más</button>` : ''}
-      ${verTodoAhora && ahora.length > TOPE ? `<button class="ver-mas" data-vermenos>Ver menos</button>` : ''}
-    </div>`;
-  } else {
-    html += `<div class="bloque"><div class="respira">
-      <b>Nada pendiente para hoy</b><span>Lo que tenga fecha aparecerá aquí</span></div></div>`;
+      ${verTodoAhora && vencido.length > TOPE ? `<button class="ver-mas" data-vermenos>Ver menos</button>` : ''}`;
   }
 
-  // ---- PRÓXIMOS 7 DÍAS, por día ----
   if(semana.length){
     const g = {};
     semana.forEach(x => { (g[x.fecha] = g[x.fecha] || []).push(x); });
-    html += `<div class="bloque"><div class="bloque-cab"><h3>Próximos 7 días</h3>
-      <button class="ir" data-ir="eventos">Calendario</button></div>
-      ${Object.keys(g).sort().map(f => {
-        const fe = new Date(f+'T00:00:00'), n = dias(f);
-        const et = n === 1 ? 'mañana' : `${DIAS[fe.getDay()]} ${fe.getDate()}`;
-        return `<div class="dia-cab">${et}</div>${g[f].map(fila).join('')}`;
+    html += `<div class="sub-rot">Próximos 7 días</div>`;
+    html += Object.keys(g).sort().map(f => {
+      const fe = new Date(f+'T00:00:00'), n = dias(f);
+      const et = n === 1 ? 'Mañana' : `${DIAS[fe.getDay()].charAt(0).toUpperCase()+DIAS[fe.getDay()].slice(1)} ${fe.getDate()}`;
+      return `<div class="sub-rot dia">${et}</div><div class="tarj">${g[f].map(fila).join('')}</div>`;
+    }).join('');
+  }
+
+  // ---- Lo que has anclado tú ----
+  if(anclado.length){
+    html += `<div class="sub-rot">Fijado · ${anclado.length}</div>`;
+    const listas = anclado.filter(x => x.t === 'nota' && x.o.tipo === 'lista');
+    const resto = anclado.filter(x => !(x.t === 'nota' && x.o.tipo === 'lista'));
+
+    listas.forEach(({o:n}) => {
+      const falta = (n.items||[]).filter(i => !i.hecho);
+      const esCompra = norm(n.categoria||'') === 'compras' || /compra|super|mercado/i.test(n.titulo||'');
+      html += `<button class="compra-res" data-abrir-no="${n.id}" style="background:${colorNota(n.color)};margin-bottom:9px">
+        <div class="ct">${esc(n.titulo || 'Lista')}<em>${falta.length} ${esCompra?'por comprar':'sin marcar'}</em></div>
+        <div class="ci">${falta.slice(0,7).map(i => `<span>${esc(i.txt)}</span>`).join('')}
+          ${falta.length>7?`<span>+${falta.length-7}</span>`:''}</div></button>`;
+    });
+
+    if(resto.length){
+      html += `<div class="tarj">${resto.map(({t, o}) => {
+        if(t === 'tarea') return `<button class="p-fila" data-abrir-ta="${o.id}">
+          <span class="p-check"></span>
+          <span class="cuerpo"><b>${esc(o.titulo)}</b>${o.proyecto?`<span>${esc(o.proyecto)}</span>`:''}</span></button>`;
+        if(t === 'nota') return `<button class="p-fila" data-abrir-no="${o.id}">
+          <span class="marca" style="background:${colorNota(o.color)}"></span>
+          <span class="cuerpo"><b>${esc(o.titulo || 'Nota')}</b>
+            <span>${esc(soloTexto(o.contenido||'').slice(0,48))}</span></span></button>`;
+        return `<button class="p-fila" data-abrir-fi="${o.id}">
+          <span class="marca" style="background:${colorCat(o.categoria)}"></span>
+          <span class="cuerpo"><b>${iconoCat(o.categoria)} ${esc(o.titulo)}</b>
+            <span>${(o.campos||[]).slice(0,2).map(c => esc(c.k + ': ' + c.v)).join(' · ')}</span></span></button>`;
       }).join('')}</div>`;
+    }
   }
 
-  // ---- PROYECTOS ----
-  if(proys.length){
-    html += `<div class="bloque"><div class="bloque-cab"><h3>Proyectos</h3></div>
-      ${proys.map(tarjetaProyecto).join('')}</div>`;
-  }
-
-  // ---- Sin fecha, por si se te olvidan ----
-  const sueltas = pendientes.filter(t => !t.fechaLimite && !t.proyecto);
-  if(sueltas.length){
-    html += `<div class="bloque"><div class="bloque-cab"><h3>Sin fecha · ${sueltas.length}</h3>
-      <button class="ir" data-ir="tareas">Ver todo</button></div>
-      ${sueltas.slice(0,4).map(t => `<button class="res" data-abrir-ta="${t.id}">
-        <div class="res-bar" style="background:var(--muted)"></div>
-        <div class="res-in"><span class="res-t"><i class="mini-check"></i>${esc(t.titulo)}</span></div></button>`).join('')}</div>`;
-  }
-
-  // ---- Listas y notas fijadas: consulta, no alarma ----
-  if(listas.length){
-    html += `<div class="bloque"><div class="bloque-cab"><h3>Listas</h3>
-      <button class="ir" data-ir="notas">Ver todo</button></div>
-      ${listas.slice(0,2).map(n => {
-        const falta = n.items.filter(i => !i.hecho);
-        const esCompra = norm(n.etiqueta||'') === 'compras' || /compra|super|mercado/i.test(n.titulo||'');
-        return `<button class="compra-res" data-abrir-no="${n.id}" style="background:${colorNota(n.color)};margin-bottom:8px">
-          <div class="ct">${esc(n.titulo || 'Lista')}<em>${falta.length} ${esCompra?'por comprar':'sin marcar'}</em></div>
-          <div class="ci">${falta.slice(0,7).map(i => `<span>${esc(i.txt)}</span>`).join('')}
-            ${falta.length>7?`<span>+${falta.length-7}</span>`:''}</div></button>`;
-      }).join('')}</div>`;
-  }
-
-  if(fijadas.length){
-    html += `<div class="bloque"><div class="bloque-cab"><h3>Fijadas</h3>
-      <button class="ir" data-ir="notas">Ver todo</button></div>
-      <div class="notas">${fijadas.slice(0,4).map(tarjetaNota).join('')}</div></div>`;
+  if(!reclaman && !semana.length && !anclado.length){
+    html += `<div class="empty" style="padding:34px 20px"><h2>Todo tranquilo</h2>
+      <p>Lo que tenga fecha aparecerá aquí solo.<br>
+      Para el resto, usa 🧭 <b>Mostrar en Inicio</b> en cualquier tarea, nota o ficha.</p></div>`;
   }
 
   const el = document.getElementById('view-inicio');
@@ -1715,18 +1815,12 @@ function renderInicio(){
   el.querySelectorAll('[data-abrir-ev]').forEach(b => b.onclick = () => sheetEvento(b.dataset.abrirEv));
   el.querySelectorAll('[data-abrir-ta]').forEach(b => b.onclick = () => sheetTarea(b.dataset.abrirTa));
   el.querySelectorAll('[data-abrir-no]').forEach(b => b.onclick = () => abrirEditor(b.dataset.abrirNo));
-  el.querySelectorAll('[data-proy]').forEach(b => b.onclick = () => verProyecto(b.dataset.proy));
+  el.querySelectorAll('[data-abrir-fi]').forEach(b => b.onclick = () => {
+    irA('datos'); fichasAbiertas.add(b.dataset.abrirFi); destacar(b.dataset.abrirFi); render();
+  });
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
   if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
-  el.querySelectorAll('[data-editn]').forEach(b => b.onclick = () => abrirEditor(b.dataset.editn));
-  el.querySelectorAll('[data-item]').forEach(b => b.onclick = async e => {
-    e.stopPropagation();
-    const [nid, iid] = b.dataset.item.split('|');
-    const n = notas.find(x => x.id === nid);
-    const it = n.items.find(x => x.id === iid);
-    it.hecho = !it.hecho; render(); await persistirN();
-  });
 }
 
 /* ============================================================
@@ -1735,10 +1829,10 @@ function renderInicio(){
 const notasOrdenadas = () => [...notas].sort((a,b) => (a.orden||0) - (b.orden||0));
 
 function chipsNotas(){
-  const usadas = [...new Set(notas.map(n => n.etiqueta).filter(e => e && e !== 'Sin etiqueta'))];
+  const usadas = [...new Set(notas.map(n => n.categoria).filter(e => e && e !== 'Sin categoría'))];
   const defs = [['todas','Todas'], ...usadas.map(e => [e, e])];
   document.getElementById('chips').innerHTML = defs.map(([k,l]) => {
-    const n = k === 'todas' ? notas.length : notas.filter(x => x.etiqueta === k).length;
+    const n = k === 'todas' ? notas.length : notas.filter(x => x.categoria === k).length;
     return `<button class="chip" data-fn="${esc(k)}" aria-pressed="${filtroN===k}">${esc(l)}${n?`<span class="n">${n}</span>`:''}</button>`;
   }).join('');
 }
@@ -1766,9 +1860,11 @@ function soloTexto(h){
 function tarjetaNota(n){
   const f = n.creado ? new Date(n.creado) : null;
   const pie = [];
-  if(n.etiqueta && n.etiqueta !== 'Sin etiqueta') pie.push(`<span class="n-eti">${esc(n.etiqueta)}</span>`);
+  if(n.categoria && n.categoria !== 'Sin categoría')
+    pie.push(`<span class="n-eti" style="color:${colorCat(n.categoria)};border-color:${colorCat(n.categoria)}44">${esc(n.categoria)}</span>`);
   if(f) pie.push(`<span class="n-fec">${f.getDate()} ${MESES[f.getMonth()]}</span>`);
   if(n.privado) pie.push(`<span class="n-fec">🔒</span>`);
+  if(n.enInicio) pie.push(`<span class="n-fec">🧭</span>`);
   if(n.proyecto) pie.push(`<span class="n-eti" data-verproy="${esc(n.proyecto)}" style="color:var(--pine)">◈ ${esc(n.proyecto)}</span>`);
 
   let cuerpo = '';
@@ -1800,7 +1896,7 @@ function tarjetaNota(n){
 function renderNotas(){
   chipsNotas();
   let lista = notasOrdenadas();
-  if(filtroN !== 'todas') lista = lista.filter(n => n.etiqueta === filtroN);
+  if(filtroN !== 'todas') lista = lista.filter(n => n.categoria === filtroN);
   document.getElementById('tally').textContent = `${lista.length} NOTAS`;
 
   const el = document.getElementById('view-notas');
@@ -1822,7 +1918,7 @@ function renderNotas(){
 async function crearNota(texto, tipo){
   const min = notas.length ? Math.min(...notas.map(n => n.orden||0)) : 0;
   const n = { id:uid(), titulo:texto.trim(), contenido:'', tipo:tipo||'texto', items:[],
-    etiqueta:'Sin etiqueta', color:'bone', fija:false, orden:min-1, creado:new Date().toISOString() };
+    categoria:'Sin categoría', color:'bone', fija:false, orden:min-1, creado:new Date().toISOString() };
   notas.push(n);
   if(filtroN !== 'todas') filtroN = 'todas';
   destacar(n.id);
@@ -1923,10 +2019,15 @@ function abrirEditor(id){
         style="flex:none;width:120px;border:1px solid rgba(22,34,29,.15);background:transparent;
         border-radius:8px;padding:7px 9px;font-size:13px;outline:none">
       <datalist id="listaProy">${proyectos().map(p => `<option value="${esc(p)}">`).join('')}</datalist>
+      <button class="ed-ico" id="x-inicio" aria-pressed="${n.enInicio?'true':'false'}"
+        aria-label="Mostrar en Inicio" style="flex:none;border:1px solid rgba(22,34,29,.15);font-size:15px">🧭</button>
       <button class="ed-ico" id="x-priv" aria-pressed="${n.privado?'true':'false'}"
         aria-label="Privado" style="flex:none;border:1px solid rgba(22,34,29,.15)">
         <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round"/></svg></button>
-      <select id="edEti">${ETIQUETAS.map(e=>`<option ${n.etiqueta===e?'selected':''}>${e}</option>`).join('')}</select>
+      <input id="edEti" list="listaCat" value="${esc(n.categoria && n.categoria !== 'Sin categoría' ? n.categoria : '')}"
+        placeholder="Categoría" style="flex:none;width:118px;border:1px solid rgba(22,34,29,.15);
+        background:transparent;border-radius:8px;padding:7px 9px;font-size:13px;outline:none">
+      <datalist id="listaCat">${categorias().filter(c => c !== 'Sin categoría').map(c => `<option value="${esc(c)}">`).join('')}</datalist>
       <div class="ed-cols" id="edCol">${COLORES_NOTA.map(c=>
         `<button data-c="${c.k}" aria-pressed="${(n.color||'bone')===c.k}" style="background:${c.c}" aria-label="${c.k}"></button>`).join('')}</div>
     </div>`;
@@ -1938,8 +2039,10 @@ function abrirEditor(id){
   ed.querySelector('[data-borrar]').onclick = borrarDesdeEditor;
   const pin = ed.querySelector('[data-pin2]');
   pin.onclick = () => pin.setAttribute('aria-pressed', pin.getAttribute('aria-pressed')==='true'?'false':'true');
-  const pv = document.getElementById('x-priv');
-  if(pv) pv.onclick = () => pv.setAttribute('aria-pressed', pv.getAttribute('aria-pressed')==='true'?'false':'true');
+  ['x-priv','x-inicio'].forEach(id => {
+    const b = document.getElementById(id);
+    if(b) b.onclick = () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed')==='true'?'false':'true');
+  });
   ed.querySelectorAll('[data-cmd]').forEach(b => {
     // pointerdown + preventDefault: así no se pierde lo que hay seleccionado
     b.addEventListener('pointerdown', ev => { ev.preventDefault(); aplicarFormato(b.dataset.cmd); });
@@ -2052,9 +2155,10 @@ async function cerrarEditor(){
       });
       n.items = n.items.filter(i => i.txt.trim());
     }
-    n.etiqueta = document.getElementById('edEti').value;
+    n.categoria = leerCategoria('edEti');
     n.proyecto = leerProyecto();
     n.privado = leerPrivado();
+    n.enInicio = leerInicio();
     const c = document.querySelector('#edCol button[aria-pressed="true"]');
     n.color = c ? c.dataset.c : 'bone';
     n.fija = document.querySelector('[data-pin2]').getAttribute('aria-pressed') === 'true';
@@ -2188,9 +2292,10 @@ function sheetTarea(id){
     <div class="field"><label>Fecha límite</label><input id="f-fec" type="date" value="${t.fechaLimite||''}"></div>
     <div class="field"><label>Prioridad</label><div class="seg" id="f-pri">
       ${['Alta','Media','Baja'].map(p=>`<button data-p="${p}" aria-pressed="${t.prioridad===p}">${p}</button>`).join('')}</div></div>
-    <div class="field"><label>Categoría</label><select id="f-cat">
-      ${CATEGORIAS.map(c=>`<option ${t.categoria===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    ${campoCategoria('f-cat', t.categoria)}
     ${campoProyecto(t.proyecto)}
+    <button class="check" id="x-inicio" aria-pressed="${t.enInicio?'true':'false'}"><i></i>
+      <span>🧭 Mostrar en Inicio</span></button>
     <button class="check" id="x-priv" aria-pressed="${t.privado?'true':'false'}"><i></i>
       <span>Privado · no salir en la exportación para IA</span></button>
     ${t.imagen?`<div class="field"><label>Comprobante</label>
@@ -2198,6 +2303,7 @@ function sheetTarea(id){
       <button class="quitar" data-quitarimg="${t.id}">Quitar imagen</button></div></div>`:''}
     <div class="field"><label>Notas</label><textarea id="f-not" placeholder="Detalles, medidas, referencias…">${esc(t.notas||'')}</textarea></div>
     <div class="sheet-actions"><button class="btn-save" id="f-save">Guardar</button><button class="btn-del" id="f-del">Borrar</button></div>`);
+  checkClick('x-inicio');
   checkClick('x-priv');
   segClick('f-pri');
   const qit = document.querySelector('[data-quitarimg]');
@@ -2211,10 +2317,11 @@ async function guardarTarea(){
   if(!tit) return aviso('El título no puede quedar vacío');
   t.titulo = tit;
   t.fechaLimite = document.getElementById('f-fec').value || null;
-  t.categoria = document.getElementById('f-cat').value;
+  t.categoria = leerCategoria('f-cat');
   t.notas = document.getElementById('f-not').value.trim();
   t.proyecto = leerProyecto();
   t.privado = leerPrivado();
+  t.enInicio = leerInicio();
   const p = document.querySelector('#f-pri button[aria-pressed="true"]');
   t.prioridad = p ? p.dataset.p : 'Media';
   const nuevo = t.borrador; delete t.borrador;
@@ -2249,8 +2356,7 @@ function sheetEvento(id){
       <input id="e-fin" type="date" value="${e.fechaFin||''}"></div>
     <div class="field"><label>Repetición</label><select id="e-rep">
       ${REPETICIONES.map(r=>`<option value="${r.k}" ${repDe(e)===r.k?'selected':''}>${r.l}</option>`).join('')}</select></div>
-    <div class="field"><label>Categoría</label><select id="e-cat">
-      ${CAT_EV.map(c=>`<option ${e.categoria===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    ${campoCategoria('e-cat', e.categoria)}
     <div class="field"><label>Lugar</label><input id="e-lug" value="${esc(e.lugar||'')}" placeholder="Comercio, ciudad, dirección…"></div>
     <div class="duo">
       <div class="field"><label>Coste (€)</label><input id="e-cos" type="number" step="0.01" inputmode="decimal" value="${e.coste??''}"></div>
@@ -2303,7 +2409,7 @@ async function guardarEvento(){
   e.todoDia = !e.hora;
   e.repite = document.getElementById('e-rep').value;
   e.anual = e.repite === 'anual';   // se mantiene por compatibilidad
-  e.categoria = document.getElementById('e-cat').value;
+  e.categoria = leerCategoria('e-cat');
   e.lugar = document.getElementById('e-lug').value.trim();
   const c = document.getElementById('e-cos').value;
   e.coste = c === '' ? null : Number(c);
@@ -2332,16 +2438,18 @@ async function borrarEvento(){
 /* ============================================================
    DATOS — fichas de referencia
    ============================================================ */
-const GRUPOS = ['General','Coche','Casa','Marines','Ocio','Salud','Banco','Trabajo','Documentos','Medidas'];
-const ICONOS = {General:'📋',Coche:'🚗',Casa:'🏠',Marines:'🧱',Ocio:'🎬',Salud:'🩺',
-  Banco:'🏦',Trabajo:'🔧',Documentos:'📄',Medidas:'📐'};
+
+const ICONOS = {'Sin categoría':'📋', Casa:'🏠', Marines:'🧱', Coche:'🚗', Familia:'👪',
+  Salud:'🩺', Trabajo:'🔧', 'Trámites':'📄', Finanzas:'🏦', Compras:'🛒', Ocio:'🎬',
+  'Películas':'🎬', Recetas:'🍳', Documentos:'📄', Medidas:'📐', Personal:'👤'};
+const iconoCat = c => ICONOS[c] || '📌';
 let fichasAbiertas = new Set();
 
 function chipsDatos(){
-  const usados = [...new Set(fichas.map(f => f.grupo))];
+  const usados = [...new Set(fichas.map(f => f.categoria).filter(Boolean))];
   const defs = [['todas','Todas'], ...usados.map(g => [g, g])];
   document.getElementById('chips').innerHTML = defs.map(([k,l]) => {
-    const n = k === 'todas' ? fichas.length : fichas.filter(f => f.grupo === k).length;
+    const n = k === 'todas' ? fichas.length : fichas.filter(f => f.categoria === k).length;
     return `<button class="chip" data-fd="${esc(k)}" aria-pressed="${filtroD===k}">${esc(l)}${n?`<span class="n">${n}</span>`:''}</button>`;
   }).join('');
 }
@@ -2361,7 +2469,7 @@ async function copiar(txt){
 function renderDatos(){
   chipsDatos();
   let lista = [...fichas].sort((a,b) => (a.orden||0) - (b.orden||0));
-  if(filtroD !== 'todas') lista = lista.filter(f => f.grupo === filtroD);
+  if(filtroD !== 'todas') lista = lista.filter(f => f.categoria === filtroD);
   document.getElementById('tally').textContent = `${lista.length} FICHAS`;
 
   const el = document.getElementById('view-datos');
@@ -2375,9 +2483,9 @@ function renderDatos(){
     const campos = (f.campos || []).filter(c => c.k || c.v);
     return `<article class="ficha ${fichasAbiertas.has(f.id)?'open':''} ${recien===f.id?'recien':''}">
       <button class="ficha-cab" data-abrirf="${f.id}">
-        <span class="ficha-ico">${ICONOS[f.grupo] || '📋'}</span>
+        <span class="ficha-ico" style="background:${colorCat(f.categoria)}18;border-color:${colorCat(f.categoria)}44">${iconoCat(f.categoria)}</span>
         <span class="ficha-t"><b>${esc(f.titulo)}</b>
-          <span>${esc(f.grupo)}${campos.length?` · ${campos.length} dato${campos.length===1?'':'s'}`:''}${f.proyecto?` · ◈ ${esc(f.proyecto)}`:''}</span></span>
+          <span>${esc(f.categoria||'Sin categoría')}${campos.length?` · ${campos.length} dato${campos.length===1?'':'s'}`:''}${f.proyecto?` · ◈ ${esc(f.proyecto)}`:''}</span></span>
         <svg class="ficha-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="ficha-campos">
@@ -2404,7 +2512,7 @@ function renderDatos(){
 
 async function crearFicha(titulo){
   const min = fichas.length ? Math.min(...fichas.map(f => f.orden||0)) : 0;
-  const f = { id:uid(), titulo:titulo.trim(), grupo:'General', privado:true,
+  const f = { id:uid(), titulo:titulo.trim(), categoria:'Sin categoría', privado:true,
     campos:[{id:uid(), k:'', v:''}], notas:'', orden:min-1, creado:new Date().toISOString() };
   fichas.push(f);
   if(filtroD !== 'todas') filtroD = 'todas';
@@ -2419,16 +2527,18 @@ function sheetFicha(id){
   abrirSheet(`<div class="grip"></div>
     <h2>Ficha</h2>
     <div class="field"><label>Título</label><input id="d-tit" value="${esc(f.titulo)}"></div>
-    <div class="field"><label>Grupo</label><select id="d-gru">
-      ${GRUPOS.map(g=>`<option ${f.grupo===g?'selected':''}>${g}</option>`).join('')}</select></div>
+    ${campoCategoria('d-gru', f.categoria)}
     <div class="field"><label>Datos</label><div id="d-campos"></div>
       <button class="add-campo" id="d-nuevo"><b>+</b> Añadir dato</button></div>
     ${campoProyecto(f.proyecto)}
+    <button class="check" id="x-inicio" aria-pressed="${f.enInicio?'true':'false'}"><i></i>
+      <span>🧭 Mostrar en Inicio</span></button>
     <button class="check" id="x-priv" aria-pressed="${f.privado!==false?'true':'false'}"><i></i>
       <span>Privado · no salir en la exportación para IA</span></button>
     <div class="field"><label>Notas</label><textarea id="d-not">${esc(f.notas||'')}</textarea></div>
     <div class="sheet-actions"><button class="btn-save" id="d-save">Guardar</button>
       <button class="btn-del" id="d-del">Borrar</button></div>`);
+  checkClick('x-inicio');
   checkClick('x-priv');
   pintarCampos();
   document.getElementById('d-nuevo').onclick = () => {
@@ -2474,10 +2584,11 @@ async function guardarFicha(){
   if(!tit) return aviso('La ficha necesita un título');
   recogerCampos();
   f.titulo = tit;
-  f.grupo = document.getElementById('d-gru').value;
+  f.categoria = leerCategoria('d-gru');
   f.notas = document.getElementById('d-not').value.trim();
   f.proyecto = leerProyecto();
   f.privado = leerPrivado();
+  f.enInicio = leerInicio();
   f.campos = f.campos.filter(c => (c.k||'').trim() || (c.v||'').trim());
   fichasAbiertas.add(f.id);
   cerrarSheet(); render(); await persistirD();
@@ -2963,7 +3074,7 @@ async function guardarPegado(){
     notas.push({id:nuevoId, titulo:r.titulo, contenido:'', tipo:'lista',
       items:(r.items.length ? r.items : r.crudo.split(/\r?\n/).filter(Boolean))
         .map(x => ({id:uid(), txt:x, hecho:false})),
-      etiqueta:'Compras', color:'menta', fija:false,
+      categoria:'Compras', color:'menta', fija:false,
       orden:(notas.length ? Math.min(...notas.map(n => n.orden||0)) : 0) - 1,
       proyecto:'', creado:new Date().toISOString()});
     filtroN = 'todas';
@@ -2971,7 +3082,7 @@ async function guardarPegado(){
   }
   else {
     notas.push({id:nuevoId, titulo:r.titulo, contenido:esc(r.crudo).replace(/\n/g,'<br>'),
-      tipo:'texto', items:[], etiqueta:'Sin etiqueta', color:'bone', fija:false,
+      tipo:'texto', items:[], categoria:'Sin categoría', color:'bone', fija:false,
       orden:(notas.length ? Math.min(...notas.map(n => n.orden||0)) : 0) - 1,
       proyecto:'', creado:new Date().toISOString()});
     filtroN = 'todas';
@@ -2980,7 +3091,7 @@ async function guardarPegado(){
 
   // Los códigos, a su ficha
   if(r.codigos.length && conFicha && conFicha.getAttribute('aria-pressed') === 'true'){
-    fichas.push({id:uid(), titulo:r.titulo.slice(0,40), grupo:'Documentos',
+    fichas.push({id:uid(), titulo:r.titulo.slice(0,40), categoria:'Documentos',
       campos:r.codigos.map(c => ({id:uid(), k:c.k, v:c.v})),
       notas:r.lugar || '', proyecto:'',
       orden:(fichas.length ? Math.min(...fichas.map(f => f.orden||0)) : 0) - 1,
@@ -3114,6 +3225,10 @@ function campoProyecto(valor){
     <input id="x-proy" list="listaProy" value="${esc(valor||'')}" placeholder="Sin proyecto">
     <datalist id="listaProy">${lista.map(p => `<option value="${esc(p)}">`).join('')}</datalist></div>`;
 }
+const leerInicio = () => {
+  const b = document.getElementById('x-inicio');
+  return b ? b.getAttribute('aria-pressed') === 'true' : false;
+};
 const leerPrivado = () => {
   const b = document.getElementById('x-priv');
   return b ? b.getAttribute('aria-pressed') === 'true' : false;
@@ -3222,12 +3337,12 @@ function buscar(q, flojo){
         if(!enFecha((n.creado||'').slice(0,10), f)) return;
       }
       const items = (n.items||[]).map(i => i.txt).join(' · ');
-      if(cala([n.titulo, soloTexto(n.contenido||''), n.etiqueta, items])) res.notas.push(n);
+      if(cala([n.titulo, soloTexto(n.contenido||''), n.categoria, items])) res.notas.push(n);
     });
     fichas.forEach(x => {
       if(f.mes !== null || f.anio !== null) return;
       const campos = (x.campos||[]).map(c => `${c.k} ${c.v}`).join(' · ');
-      if(cala([x.titulo, x.grupo, campos, x.notas])) res.fichas.push(x);
+      if(cala([x.titulo, x.categoria, campos, x.notas])) res.fichas.push(x);
     });
   }
   const total = res.eventos.length + res.tareas.length + res.notas.length + res.fichas.length;
@@ -3350,9 +3465,9 @@ function pintarBusqueda(){
     html += res.fichas.map(x => {
       const hit = (x.campos||[]).find(c => f.palabras.some(p => encaja(`${c.k} ${c.v}`, p)));
       return `<button class="bs-item" data-vfi="${x.id}">
-        <span class="bs-ico">${ICONOS[x.grupo] || '📋'}</span>
+        <span class="bs-ico">${iconoCat(x.categoria)}</span>
         <span class="bs-txt"><b>${resaltar(x.titulo, f.palabras)}</b>
-          <span>${hit ? resaltar(hit.k+': '+hit.v, f.palabras) : esc(x.grupo)}</span></span>
+          <span>${hit ? resaltar(hit.k+': '+hit.v, f.palabras) : esc(x.categoria||'')}</span></span>
       </button>`;
     }).join('');
   }
@@ -3649,21 +3764,21 @@ function tablas(a){
         e.estado || '', e.notas || ''])
     ],
     Datos: [
-      ['ID','Ficha','Grupo','Concepto','Valor','Notas'],
+      ['ID','Ficha','Categoría','Concepto','Valor','Notas'],
       ...fichas.flatMap(f => {
         const cs = (f.campos||[]).filter(c => c.k || c.v);
-        return cs.length ? cs.map((c,i) => [i===0?f.id:'', i===0?f.titulo:'', i===0?f.grupo:'', c.k||'', c.v||'', i===0?(f.notas||''):''])
-                         : [[f.id, f.titulo, f.grupo, '', '', f.notas||'']];
+        return cs.length ? cs.map((c,i) => [i===0?f.id:'', i===0?f.titulo:'', i===0?(f.categoria||''):'', c.k||'', c.v||'', i===0?(f.notas||''):''])
+                         : [[f.id, f.titulo, f.categoria||'', '', '', f.notas||'']];
       })
     ],
     Notas: [
-      ['ID','Título','Tipo','Contenido','Etiqueta','Fijada','Creada'],
+      ['ID','Título','Tipo','Contenido','Categoría','Fijada','Creada'],
       ...notasA.map(n => [n.id, n.titulo || '',
         n.tipo === 'lista' ? 'lista' : 'texto',
         n.tipo === 'lista'
           ? (n.items||[]).map(i => (i.hecho ? '[x] ' : '[ ] ') + i.txt).join('\n')
           : soloTexto(n.contenido || ''),
-        n.etiqueta || '', n.fija ? 'sí' : '',
+        n.categoria || '', n.fija ? 'sí' : '',
         n.creado ? n.creado.slice(0,10) : ''])
     ]
   };
@@ -4112,14 +4227,14 @@ function cotejar(hojas){
   if(hN && hN.length > 1){
     const cab = cabecera(hN[0]);
     const c = n => col(cab, n);
-    const iId=c('ID'), iTit=c('Titulo'), iTip=c('Tipo'), iCon=c('Contenido'), iEti=c('Etiqueta'), iPro=c('Proyecto');
+    const iId=c('ID'), iTit=c('Titulo'), iTip=c('Tipo'), iCon=c('Contenido'), iEti=c('Categoria'), iPro=c('Proyecto');
     hN.slice(1).forEach(f => {
       const tit = (f[iTit]||'').trim();
       const cuerpo = f[iCon]||'';
       if(!tit && !cuerpo) return;
       const esLista = norm(f[iTip]||'').includes('lista');
       const campos = {titulo:tit, tipo:esLista?'lista':'texto',
-        etiqueta:f[iEti]||'Sin etiqueta', proyecto:iPro>=0?(f[iPro]||''):'',
+        categoria:f[iEti]||'Sin categoría', proyecto:iPro>=0?(f[iPro]||''):'',
         items: esLista ? cuerpo.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => ({
                   id:uid(), hecho:/^\[[xX]\]/.test(l), txt:l.replace(/^\[[ xX]?\]\s*/,'') })) : [],
         contenido: esLista ? '' : esc(cuerpo).replace(/\n/g,'<br>')};
@@ -4141,12 +4256,12 @@ function cotejar(hojas){
   if(hD && hD.length > 1){
     const cab = cabecera(hD[0]);
     const c = n => col(cab, n);
-    const iId=c('ID'), iFic=c('Ficha'), iGru=c('Grupo'), iCon=c('Concepto'), iVal=c('Valor'), iNot=c('Notas');
+    const iId=c('ID'), iFic=c('Ficha'), iGru=c('Categoria'), iCon=c('Concepto'), iVal=c('Valor'), iNot=c('Notas');
     let actual = null;
     const lista = [];
     hD.slice(1).forEach(f => {
       const nom = (f[iFic]||'').trim();
-      if(nom){ actual = {titulo:nom, grupo:f[iGru]||'General', notas:iNot>=0?(f[iNot]||''):'', campos:[],
+      if(nom){ actual = {titulo:nom, categoria:f[iGru]||'Sin categoría', notas:iNot>=0?(f[iNot]||''):'', campos:[],
                          _id: iId>=0 ? String(f[iId]||'').trim() : ''}; lista.push(actual); }
       if(!actual) return;
       const k = (f[iCon]||'').trim(), v = (f[iVal]||'').trim();
@@ -4366,17 +4481,17 @@ function tablasIA(){
     ...ev.map(e => [e.fecha||'', e.hora||'', e.titulo, e.proyecto||'', e.categoria,
       e.lugar||'', (e.coste ?? ''), e.garantia||'', repDe(e)==='no' ? '' : REP_TEXTO(repDe(e))])];
   if(no.length) T.Notas = [
-    ['Título','Tipo','Contenido','Etiqueta','Proyecto'],
+    ['Título','Tipo','Contenido','Categoría','Proyecto'],
     ...no.map(n => [n.titulo||'', n.tipo==='lista' ? 'lista' : 'texto',
       n.tipo==='lista' ? (n.items||[]).map(i => (i.hecho?'[x] ':'[ ] ')+i.txt).join('\n')
                        : soloTexto(n.contenido||''),
-      n.etiqueta||'', n.proyecto||''])];
+      n.categoria||'', n.proyecto||''])];
   if(fi.length) T.Datos = [
-    ['Ficha','Grupo','Concepto','Valor'],
+    ['Ficha','Categoría','Concepto','Valor'],
     ...fi.flatMap(f => {
       const cs = (f.campos||[]).filter(c => c.k || c.v);
-      return cs.length ? cs.map((c,i) => [i===0?f.titulo:'', i===0?f.grupo:'', c.k||'', c.v||''])
-                       : [[f.titulo, f.grupo, '', '']];
+      return cs.length ? cs.map((c,i) => [i===0?f.titulo:'', i===0?(f.categoria||''):'', c.k||'', c.v||''])
+                       : [[f.titulo, f.categoria||'', '', '']];
     })];
   return T;
 }
@@ -4441,15 +4556,19 @@ const AYUDA = [
   ['🧭', 'Qué es esto',
    'Tu archivo personal: eventos, tareas, notas, listas y datos de referencia, todo en un sitio y sin depender de Google. Los datos se guardan en tu dispositivo, no en un servidor.'],
   ['🏠', 'Inicio · tu aviso',
-   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador: si algo tiene fecha y está cerca, sale aquí, sea evento, tarea o subtarea. Arriba "Ahora" (lo vencido y lo de hoy), luego los próximos 7 días agrupados, y después proyectos, listas y notas fijadas. Si no hay nada urgente, te lo dice y se queda en silencio.'],
+   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador. Arriba te dice en una frase qué te reclama: "3 cosas te reclaman · 1 para hoy, 2 vencidas". Si no hay nada, te lo dice y se calla. Debajo, todo lo que tenga fecha (eventos, tareas y subtareas) entra solo: Hoy, Vencido y los próximos 7 días. Lo demás lo eliges tú con 🧭 Mostrar en Inicio, y aparece en el bloque Fijado: notas, listas, fichas o tareas sin fecha.'],
   ['📅', 'Eventos',
    'Cuatro vistas: Mes, 3 días, 1 día y Gastos. Cada evento admite hora, lugar, coste, ticket, garantía y repetición. Si dura varios días, rellena "Hasta" y aparecerá en todos ellos indicando "día 3 de 7". El botón "Añadir al calendario" lo manda a la app de tu móvil, que sí puede avisarte.'],
   ['✓', 'Tareas',
    'La fila de arriba son tus proyectos: tocas uno y la pantalla se convierte en él, con su avance, lo gastado y enlaces a sus eventos, notas y fichas. Dentro, las tareas padre con sus subtareas: despliega desde el contador de la derecha. Al completar una tarea padre la app recuerda cómo estaban sus subtareas, así que si la restauras vuelven a su sitio. El filtro por fecha está en el botón del calendario, al final de la fila.'],
   ['📝', 'Notas',
-   'Tarjetas de colores, reordenables arrastrando desde los puntitos. Pueden ser texto con formato o listas con casillas, que puedes marcar sin abrirlas. El botón verde de abajo crea una lista nueva.'],
+   'Tarjetas de colores, reordenables arrastrando desde los puntitos. Pueden ser texto con formato o listas con casillas, que puedes marcar sin abrirlas. El botón verde de abajo crea una lista nueva. Las etiquetas pasaron a ser la categoría común de la app.'],
   ['📋', 'Datos',
-   'Fichas de lo que consultas de vez en cuando: matrículas, pólizas, medidas, códigos. Toca un valor y se copia. Nacen marcadas como privadas.'],
+   'Fichas de lo que consultas de vez en cuando: matrículas, pólizas, medidas, códigos. Toca un valor y se copia. Se agrupan por la misma categoría que el resto de la app, y nacen marcadas como privadas.'],
+  ['🧭', 'Mostrar en Inicio',
+   'Cualquier tarea, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado con una brújula en su tarjeta. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
+  ['🏷️', 'Categorías',
+   'Una sola lista compartida por los cuatro módulos, así que el buscador puede cruzarlas. Puedes elegir de las que vienen o escribir una nueva: en cuanto la uses, queda disponible en toda la app y recibe su propio color. Antes había etiquetas en Notas y grupos en Datos; lo que tenías se ha traspasado solo.'],
   ['🔍', 'Buscar',
    'El botón verde flotante. Busca en todo a la vez y aguanta erratas: "cerbo" encuentra "cerco". Entiende meses ("coche agosto") y tiene atajos: garantía, gastos, atrasado, pendientes.'],
   ['📋', 'Pegar y fotos',
@@ -4460,6 +4579,10 @@ const AYUDA = [
    'Escribe un nombre de proyecto en varias tareas, eventos, notas o fichas y quedan enlazados. La etiqueta ◈ es tocable desde cualquier módulo y te lleva a la pantalla del proyecto, donde ves su avance, lo gastado, el material pendiente y todo lo suyo repartido por los demás módulos.'],
   ['🔒', 'Privado y copias',
    'El interruptor "Privado" impide que algo salga en "Exportar para IA". No es cifrado: no guardes aquí contraseñas ni números de tarjeta, ni siquiera marcados.'],
+  ['🧭', 'Mostrar en Inicio',
+   'Cualquier tarea, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado con una brújula en su tarjeta. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
+  ['🏷️', 'Categorías',
+   'Una sola lista compartida por los cuatro módulos, así que el buscador puede cruzarlas. Puedes elegir de las que vienen o escribir una nueva: en cuanto la uses queda disponible en toda la app y recibe su propio color. Antes había etiquetas en Notas y grupos en Datos; lo que tenías se ha traspasado solo.'],
   ['📊', 'Excel · para trabajar',
    'Se saca por años: "Dame el Excel de 2025" y sale solo ese año, ligero y sin ruido. Edítalo en el ordenador y pulsa "Cargar Excel": coteja fila a fila por la columna ID, así que puedes cambiar títulos, fechas o categorías sin perder nada. Y como sabe de qué año es, nunca toca el resto de tu historia aunque marques la casilla de borrar. No borres la columna ID ni la fila de títulos. Lo que el Excel no guarda (fotos, colores, marcas de privado) se conserva de lo que ya tenías.'],
   ['💾', 'Copia .json · tu seguro',
@@ -4470,15 +4593,51 @@ const AYUDA = [
    'En este dispositivo, no en un servidor. Eso es bueno para tu privacidad, pero significa que si borras los datos de navegación del navegador, o desinstalas la app, se van con ellos. Baja una copia cada pocos días: el punto de arriba se pone en ámbar cuando hace más de una semana.']
 ];
 
+// Avisar si el móvil sigue con una versión guardada más antigua
+async function comprobarVersion(){
+  const z = document.getElementById('verCache'); if(!z) return;
+  try{
+    if(!('caches' in window)){ z.textContent = 'sin caché · siempre la última'; return; }
+    const nombres = await caches.keys();
+    const mia = nombres.find(n => n.startsWith('bitacora-'));
+    if(!mia){ z.textContent = 'sin copia guardada · siempre la última'; return; }
+    const guardada = mia.replace('bitacora-', '');
+    if(guardada === VERSION_APP){
+      z.innerHTML = '<span style="color:var(--pine)">al día</span> · caché ' + guardada;
+    } else {
+      z.innerHTML = `<span style="color:var(--oxblood)">la caché tiene ${guardada}</span>` +
+        `<br><button id="btnActualizar" class="ver-mas" style="margin-top:7px">Vaciar caché y recargar</button>`;
+      const b = document.getElementById('btnActualizar');
+      if(b) b.onclick = async () => {
+        for(const n of nombres) await caches.delete(n);
+        if(navigator.serviceWorker){
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for(const r of regs) await r.unregister();
+        }
+        location.reload();
+      };
+    }
+  }catch(e){ z.textContent = 'no he podido comprobarlo'; }
+}
+
 function menuAyuda(){
   editando = null;
   abrirSheet(`<div class="grip"></div><h2>Cómo funciona Bitácora</h2>
     ${AYUDA.map(([i,t,d]) => `<div class="op" style="align-items:flex-start;cursor:default">
       <i style="font-size:15px">${i}</i>
       <div><b>${t}</b><span style="line-height:1.45;margin-top:3px">${d}</span></div></div>`).join('')}
-    <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);
-      text-align:center;padding:14px 0 4px;letter-spacing:.06em">
-      Todo funciona sin conexión salvo la lectura de imágenes la primera vez</div>`);
+    <div class="pie-ver">
+      <div class="linea"><span>Versión</span><b>Bitácora ${VERSION_APP}</b></div>
+      <div class="linea"><span>Guardado en</span><b>${
+        {claude:'tu cuenta', navegador:'este dispositivo', memoria:'ningún sitio'}[Store.motor]}</b></div>
+      <div class="linea"><span>Última copia</span><b>${
+        diasSinCopia() === null ? 'nunca' : diasSinCopia() === 0 ? 'hoy' : 'hace ' + diasSinCopia() + ' días'}</b></div>
+      <div class="linea"><span>Registrado</span><b>${tareas.length + eventos.length + notas.length + fichas.length} elementos</b></div>
+      <div id="verEstado" style="margin-top:10px"></div>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:12px">
+        Todo funciona sin conexión salvo la lectura de imágenes la primera vez.</p>
+    </div>`);
+  comprobarVersion();
 }
 
 /* ---------- Papelera: lo borrado se guarda 30 días ---------- */
@@ -4506,6 +4665,7 @@ async function recuperar(i){
   aviso(`Recuperado · ${o.titulo || 'elemento'}`);
 }
 
+// Compara la versión que corre con la que hay publicada
 function menuPapelera(){
   editando = null;
   const tope = Date.now() - DIAS_PAPELERA * 864e5;
@@ -4668,11 +4828,11 @@ const semillaE = () => {
 const semillaN = () => {
   const h = n => { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString(); };
   return [
-    {id:uid(),titulo:'Películas pendientes',contenido:'Avatar: Fuego y cenizas — Disney<br>El Médico 2 — Movistar<br>Enola Holmes 3 — Netflix<br>El Cautivo — Netflix',etiqueta:'Películas',color:'cielo',fija:true,orden:0,creado:h(3)},
-    {id:uid(),titulo:'Medidas pared jardineras',proyecto:'Pared jardineras',contenido:'Tramo largo: <b>4,20 m</b><br>Altura: <b>90 cm</b><br>Ladrillo caravista, 3 hiladas.',etiqueta:'Marines',color:'sage',fija:false,orden:1,creado:h(6)},
-    {id:uid(),titulo:'Regalo cumpleaños Ene',contenido:'Le gustó el perfume que olió en el centro comercial, marca Chanel. Preguntar precio antes del 25.',etiqueta:'Regalos',color:'rosa',fija:false,orden:2,creado:h(1)},
-    {id:uid(),titulo:'Config. GPRS',contenido:'APN: internet<br>Usuario y contraseña en blanco.',etiqueta:'Trabajo',color:'arena',fija:false,orden:3,creado:h(12)},
-    {id:uid(),titulo:'Lista de la compra',proyecto:'Pared jardineras',contenido:'',tipo:'lista',etiqueta:'Compras',color:'menta',fija:true,orden:-1,creado:h(0),
+    {id:uid(),titulo:'Películas pendientes',contenido:'Avatar: Fuego y cenizas — Disney<br>El Médico 2 — Movistar<br>Enola Holmes 3 — Netflix<br>El Cautivo — Netflix',categoria:'Películas',color:'cielo',fija:true,orden:0,creado:h(3)},
+    {id:uid(),titulo:'Medidas pared jardineras',proyecto:'Pared jardineras',contenido:'Tramo largo: <b>4,20 m</b><br>Altura: <b>90 cm</b><br>Ladrillo caravista, 3 hiladas.',categoria:'Marines',color:'sage',fija:false,orden:1,creado:h(6)},
+    {id:uid(),titulo:'Regalo cumpleaños Ene',contenido:'Le gustó el perfume que olió en el centro comercial, marca Chanel. Preguntar precio antes del 25.',categoria:'Familia',color:'rosa',fija:false,orden:2,creado:h(1)},
+    {id:uid(),titulo:'Config. GPRS',contenido:'APN: internet<br>Usuario y contraseña en blanco.',categoria:'Trabajo',color:'arena',fija:false,orden:3,creado:h(12)},
+    {id:uid(),titulo:'Lista de la compra',proyecto:'Pared jardineras',contenido:'',tipo:'lista',categoria:'Compras',color:'menta',fija:true,orden:-1,creado:h(0),
       items:[{id:uid(),txt:'Ladrillos',hecho:false},{id:uid(),txt:'Silicona piscina',hecho:false},
              {id:uid(),txt:'Silicona',hecho:true},{id:uid(),txt:'Cemento',hecho:false},
              {id:uid(),txt:'Tubo corrugado',hecho:false}]},
@@ -4680,12 +4840,12 @@ const semillaN = () => {
 };
 
 const semillaD = () => [
-  {id:uid(),titulo:'Coche',grupo:'Coche',orden:0,notas:'',campos:[
+  {id:uid(),titulo:'Coche',categoria:'Coche',orden:0,notas:'',campos:[
     {id:uid(),k:'Matrícula',v:'0000 XYZ'},{id:uid(),k:'Bastidor',v:''},
     {id:uid(),k:'Seguro',v:''},{id:uid(),k:'Póliza',v:''},{id:uid(),k:'Próxima ITV',v:''}]},
-  {id:uid(),titulo:'Pared jardineras',proyecto:'Pared jardineras',grupo:'Medidas',orden:1,notas:'Ladrillo caravista, 3 hiladas.',campos:[
+  {id:uid(),titulo:'Pared jardineras',proyecto:'Pared jardineras',categoria:'Medidas',orden:1,notas:'Ladrillo caravista, 3 hiladas.',campos:[
     {id:uid(),k:'Tramo largo',v:'4,20 m'},{id:uid(),k:'Altura',v:'90 cm'}]},
-  {id:uid(),titulo:'Internet / móvil',grupo:'Casa',orden:2,notas:'',campos:[
+  {id:uid(),titulo:'Internet / móvil',categoria:'Casa',orden:2,notas:'',campos:[
     {id:uid(),k:'APN',v:'internet'},{id:uid(),k:'Usuario',v:'(en blanco)'}]},
 ];
 
@@ -4801,7 +4961,18 @@ function recibirCompartido(){
   eventos = (e && e.length) ? e : (vacia ? [] : semillaE());
   eventos.forEach(x => { if(x.estado === 'pendiente') x.estado = 'confirmado'; });
   notas = (n && n.length) ? n : (vacia ? [] : semillaN());
+  // Traspaso de las listas antiguas a la categoría única
+  const TRADUCE = {'Viaje':'Ocio','General':'Personal','Banco':'Finanzas','Ideas':'Personal','Regalos':'Familia'};
+  const arregla = x => {
+    if(!x.categoria && x.etiqueta) x.categoria = x.etiqueta;
+    if(!x.categoria && x.grupo) x.categoria = x.grupo;
+    if(x.categoria === 'Sin etiqueta') x.categoria = 'Sin categoría';
+    if(TRADUCE[x.categoria]) x.categoria = TRADUCE[x.categoria];
+    delete x.etiqueta; delete x.grupo;
+  };
+  tareas.forEach(arregla); eventos.forEach(arregla);
   notas.forEach(x => {
+    arregla(x);
     x.tipo = x.tipo || 'texto'; x.items = x.items || [];
     // Reparar el escapado que se acumuló en versiones anteriores
     if(x.contenido) while(/&amp;(amp|nbsp|lt|gt|quot|#39);/i.test(x.contenido))
@@ -4810,6 +4981,7 @@ function recibirCompartido(){
     x.items.forEach(i => { i.txt = soloTexto(i.txt); });
   });
   fichas = (fi && fi.length) ? fi : (vacia ? [] : semillaD());
+  fichas.forEach(arregla);
   render();
   ajustarHueco();
   setTimeout(ajustarHueco, 300);
