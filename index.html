@@ -968,7 +968,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v19';
+const VERSION_APP = 'v21';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1818,44 +1818,58 @@ function renderInicio(){
     }).join('');
   }
 
-  // ---- Lo que has anclado tú ----
+  // ---- Lo que has anclado tú: todo como tarjeta, igual que en Notas ----
   if(anclado.length){
-    html += `<div class="sub-rot">Fijado · ${anclado.length}</div>`;
-    const listas = anclado.filter(x => x.t === 'nota' && x.o.tipo === 'lista');
-    const resto = anclado.filter(x => !(x.t === 'nota' && x.o.tipo === 'lista'));
+    html += `<div class="sub-rot">Fijado · ${anclado.length}</div><div class="notas">`;
 
-    listas.forEach(({o:n}) => {
-      const falta = (n.items||[]).filter(i => !i.hecho);
-      const esCompra = norm(n.categoria||'') === 'compras' || /compra|super|mercado/i.test(n.titulo||'');
-      html += `<button class="compra-res" data-abrir-no="${n.id}" style="background:${colorNota(n.color)};margin-bottom:9px">
-        <div class="ct">${esc(n.titulo || 'Lista')}<em>${falta.length} ${esCompra?'por comprar':'sin marcar'}</em></div>
-        <div class="ci">${falta.slice(0,7).map(i => `<span>${esc(i.txt)}</span>`).join('')}
-          ${falta.length>7?`<span>+${falta.length-7}</span>`:''}</div></button>`;
-    });
+    html += anclado.map(({t, o}) => {
+      if(t === 'nota' && o.tipo === 'lista'){
+        const falta = (o.items||[]).filter(i => !i.hecho);
+        const esCompra = norm(o.categoria||'') === 'compras' || /compra|super|mercado/i.test(o.titulo||'');
+        return `<div class="nota" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
+          <div class="n-tit">${esc(o.titulo || 'Lista')}</div>
+          <div class="n-lista">${falta.slice(0,5).map(i =>
+            `<div class="n-li"><i></i><span>${esc(i.txt)}</span></div>`).join('')}
+            ${falta.length>5?`<span class="n-mas">+${falta.length-5} más</span>`:''}</div>
+          <div class="n-pie"><span class="n-eti">${falta.length} ${esCompra?'por comprar':'sin marcar'}</span></div>
+        </div>`;
+      }
+      if(t === 'nota'){
+        return `<div class="nota" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
+          ${o.titulo?`<div class="n-tit">${esc(o.titulo)}</div>`:''}
+          <div class="n-txt">${limpiar(o.contenido||'')}</div>
+        </div>`;
+      }
+      if(t === 'tarea'){
+        return `<div class="nota" data-abrir-ta="${o.id}">
+          <div class="n-tit" style="display:flex;align-items:flex-start;gap:8px">
+            <span class="p-check" style="margin-top:2px"></span>${esc(o.titulo)}</div>
+          ${o.notas ? `<div class="n-txt">${esc(o.notas)}</div>` : ''}
+          <div class="n-pie">
+            ${o.proyecto?`<span class="n-eti">◈ ${esc(o.proyecto)}</span>`:''}
+            ${o.fechaLimite?`<span class="n-fec">${esc(o.fechaLimite.slice(8,10)+'/'+o.fechaLimite.slice(5,7))}</span>`:''}
+          </div>
+        </div>`;
+      }
+      if(t === 'evento'){
+        const f = new Date(fechaEfectiva(o)+'T00:00:00');
+        return `<div class="nota" data-abrir-ev="${o.id}">
+          <div class="n-tit">${esc(o.titulo)}</div>
+          <div class="n-txt">${f.getDate()} ${MESES[f.getMonth()]}${o.lugar?' · '+esc(o.lugar):''}</div>
+          <div class="n-pie"><span class="n-fec">${dias(fechaEfectiva(o))<0?'pasado':'próximo'}</span></div>
+        </div>`;
+      }
+      const camp = (o.campos||[]).slice(0,2);
+      return `<div class="nota" data-abrir-fi="${o.id}">
+        <div class="n-tit">${iconoCat(o.categoria)} ${esc(o.titulo)}</div>
+        ${camp.length?`<div class="n-txt">${camp.map(c=>esc(c.k+': '+c.v)).join('\\n')}</div>`:''}
+        <div class="n-pie"><span class="n-eti">${esc(o.categoria||'')}</span></div>
+      </div>`;
+    }).join('');
 
-    if(resto.length){
-      html += `<div class="tarj">${resto.map(({t, o}) => {
-        if(t === 'tarea') return `<button class="p-fila" data-abrir-ta="${o.id}">
-          <span class="p-check"></span>
-          <span class="cuerpo"><b>${esc(o.titulo)}</b>${o.proyecto?`<span>${esc(o.proyecto)}</span>`:''}</span></button>`;
-        if(t === 'evento'){
-          const f = new Date(fechaEfectiva(o)+'T00:00:00');
-          return `<button class="p-fila" data-abrir-ev="${o.id}">
-            <span class="marca" style="background:${colorCat(o.categoria)}"></span>
-            <span class="cuerpo"><b>${esc(o.titulo)}</b>
-              <span>${f.getDate()} ${MESES[f.getMonth()]}${o.lugar?' · '+esc(o.lugar):''}</span></span></button>`;
-        }
-        if(t === 'nota') return `<button class="p-fila" data-abrir-no="${o.id}">
-          <span class="marca" style="background:${colorNota(o.color)}"></span>
-          <span class="cuerpo"><b>${esc(o.titulo || 'Nota')}</b>
-            <span>${esc(soloTexto(o.contenido||'').slice(0,48))}</span></span></button>`;
-        return `<button class="p-fila" data-abrir-fi="${o.id}">
-          <span class="marca" style="background:${colorCat(o.categoria)}"></span>
-          <span class="cuerpo"><b>${iconoCat(o.categoria)} ${esc(o.titulo)}</b>
-            <span>${(o.campos||[]).slice(0,2).map(c => esc(c.k + ': ' + c.v)).join(' · ')}</span></span></button>`;
-      }).join('')}</div>`;
-    }
+    html += `</div>`;
   }
+
 
   if(!reclaman && !semana.length && !anclado.length){
     html += `<div class="empty" style="padding:34px 20px"><h2>Todo tranquilo</h2>
@@ -3348,9 +3362,34 @@ function parecido(a, b){
 function encaja(texto, palabra){
   const t = norm(texto);
   if(t.includes(palabra)) return true;
+
+  // ¿Alguna palabra del grupo de sinónimos aparece en el texto?
+  const grupo = grupoDe(palabra);
+  if(grupo && grupo.some(g => g !== palabra && t.includes(g))) return true;
+
   if(palabra.length < 4) return false;
-  return t.split(/\s+/).some(p => parecido(p, palabra));
+  return t.split(/\s+/).some(p => {
+    if(parecido(p, palabra)) return true;
+    // Y con tolerancia a erratas dentro del propio sinónimo
+    return grupo ? grupo.some(g => g !== palabra && g.length >= 4 && parecido(p, g)) : false;
+  });
 }
+
+// Palabras que significan lo mismo aunque tú y yo las escribamos distinto
+const SINONIMOS = [
+  ['rueda','ruedas','neumatico','neumaticos','llanta','llantas'],
+  ['coche','carro','auto','vehiculo'],
+  ['itv','inspeccion tecnica'],
+  ['casa','vivienda','hogar','domicilio'],
+  ['medico','doctor','consulta'],
+  ['cumple','cumpleanos','cumpleaño'],
+  ['compra','compras','super','supermercado','mercado'],
+  ['factura','recibo','ticket'],
+  ['revision','chequeo','mantenimiento'],
+  ['seguro','poliza'],
+  ['cita','visita'],
+];
+const grupoDe = w => SINONIMOS.find(g => g.includes(w));
 
 const MESES_BUSCA = {enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,
   agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11};
@@ -3809,8 +3848,26 @@ function crearZipXLSX(tablas){
 }
 
 
-function bajar(nombre, contenido, tipo){
+async function bajar(nombre, contenido, tipo, ofrecerGuardar){
   const blob = contenido instanceof Blob ? contenido : new Blob([contenido], {type:tipo});
+
+  // showSaveFilePicker deja elegir dónde guardar (incluida una carpeta de Drive
+  // sincronizada, si la tienes en el dispositivo). Solo en Chrome de escritorio/Android reciente.
+  if(ofrecerGuardar && window.showSaveFilePicker){
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName: nombre,
+        types: [{description: 'Archivo', accept: {[tipo]: ['.' + nombre.split('.').pop()]}}]
+      });
+      const w = await handle.createWritable();
+      await w.write(blob); await w.close();
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return;   // el usuario cerró el selector
+      // si falla, seguimos con la descarga normal de abajo
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = nombre;
@@ -3945,10 +4002,10 @@ const pesoCopia = con => {
   return kb > 900 ? (kb/1024).toFixed(1)+' MB' : Math.round(kb)+' kB';
 };
 
-function exportarCopia(){
-  bajar(`bitacora-copia-${sello()}.json`, copiaJSON(), 'application/json');
+async function exportarCopia(){
+  await bajar(`bitacora-copia-${sello()}.json`, copiaJSON(), 'application/json', true);
   marcarCopia();
-  aviso('Copia descargada');
+  aviso('Copia guardada');
   cerrarSheet();
 }
 
@@ -4393,6 +4450,120 @@ function distintos(obj, campos){
   });
 }
 
+/* ---------- Importar un .ics de fuera (calendarios de clubes, festivos…) ---------- */
+function desICS(t){
+  // Las líneas largas del ics vienen "plegadas": una línea nueva y un espacio siguen a la anterior
+  return String(t||'').replace(/\r\n/g,'\n').replace(/\n[ \t]/g,'')
+    .replace(/\\n/g,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');
+}
+
+function fechaICS(v){
+  if(!v) return {fecha:'', hora:''};
+  const solo = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
+  if(solo) return {fecha:`${solo[1]}-${solo[2]}-${solo[3]}`, hora:''};
+  const con = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(v);
+  if(!con) return {fecha:'', hora:''};
+  if(con[7] === 'Z'){
+    // Hora UTC: la pasamos a la local del navegador para que coincida con lo que verás
+    const d = new Date(Date.UTC(+con[1], +con[2]-1, +con[3], +con[4], +con[5], +con[6]));
+    return {fecha:iso(d), hora:dosDig(d.getHours())+':'+dosDig(d.getMinutes())};
+  }
+  return {fecha:`${con[1]}-${con[2]}-${con[3]}`, hora:`${con[4]}:${con[5]}`};
+}
+
+function leerICS(txt){
+  const bloques = desICS(txt).split(/BEGIN:VEVENT/).slice(1).map(b => b.split('END:VEVENT')[0]);
+  return bloques.map(b => {
+    const campo = n => { const m = new RegExp('^' + n + '(?:;[^:]*)?:(.*)$', 'm').exec(b); return m ? m[1].trim() : ''; };
+    const ini = fechaICS(campo('DTSTART'));
+    const fin = fechaICS(campo('DTEND'));
+    return {
+      uid: campo('UID'), titulo: campo('SUMMARY') || 'Sin título',
+      lugar: campo('LOCATION'), notas: campo('DESCRIPTION'),
+      fecha: ini.fecha, hora: ini.hora,
+      fechaFin: (fin.fecha && fin.fecha !== ini.fecha) ? fin.fecha : ''
+    };
+  }).filter(e => e.fecha);
+}
+
+let planICS = null, icsDesde = '', icsHasta = '', icsCategoria = 'Ocio', icsProyecto = '';
+
+function elegirICS(){
+  editando = null;
+  abrirSheet(`<div class="grip"></div><h2>Importar calendario (.ics)</h2>
+    <p style="font-size:13.5px;line-height:1.5;color:var(--muted);margin:-4px 0 14px">
+      Para ligas o clubes que cambian de fecha, mejor suscribirte desde tu calendario del móvil:
+      se mantiene solo. Esto es para traer una copia puntual a Bitácora.</p>
+    <div class="sheet-actions"><button class="btn-save" id="icsGo">Elegir archivo .ics</button></div>`);
+  document.getElementById('icsGo').onclick = () => {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = '.ics,text/calendar';
+    i.onchange = async () => {
+      const f = i.files[0]; if(!f) return;
+      const eventosICS = leerICS(await f.text());
+      if(!eventosICS.length){ alert('No he encontrado eventos en ese archivo.'); return; }
+      planICS = eventosICS;
+      const anios = [...new Set(eventosICS.map(e => e.fecha.slice(0,4)))].sort();
+      icsDesde = anios[0] + '-01-01'; icsHasta = anios[anios.length-1] + '-12-31';
+      pantallaICS();
+    };
+    i.click();
+  };
+}
+
+function pantallaICS(){
+  const dentro = planICS.filter(e => e.fecha >= icsDesde && e.fecha <= icsHasta);
+  abrirSheet(`<div class="grip"></div><h2>Importar calendario</h2>
+    <p style="font-size:13px;color:var(--muted);margin:-4px 0 14px">
+      El archivo trae <b>${planICS.length}</b> eventos en total. Filtra el rango que quieras traer.</p>
+    <div class="duo">
+      <div class="field"><label>Desde</label><input id="icsDesde" type="date" value="${icsDesde}"></div>
+      <div class="field"><label>Hasta</label><input id="icsHasta" type="date" value="${icsHasta}"></div>
+    </div>
+    <div class="field"><label>Categoría para todos</label>${campoCategoria('icsCat', icsCategoria)}</div>
+    <div class="field"><label>Proyecto (opcional)</label>
+      <input id="icsProy" list="listaProy" value="${esc(icsProyecto)}" placeholder="Sin proyecto">
+      <datalist id="listaProy">${proyectos().map(p => `<option value="${esc(p)}">`).join('')}</datalist></div>
+    <div class="pg-leido" style="margin:14px 0">
+      <div class="t">Se importarán</div>
+      <div class="pg-dato"><b>${dentro.length} eventos</b></div>
+      ${dentro.slice(0,4).map(e => `<div class="pg-dato"><span>${e.fecha}</span><b>${esc(e.titulo.slice(0,40))}</b></div>`).join('')}
+      ${dentro.length > 4 ? `<div class="pg-dato"><span></span><b>… y ${dentro.length-4} más</b></div>` : ''}
+    </div>
+    <div class="sheet-actions"><button class="btn-save" id="icsAplicar">Importar</button></div>`);
+
+  document.getElementById('icsDesde').onchange = e => { icsDesde = e.target.value; pantallaICS(); };
+  document.getElementById('icsHasta').onchange = e => { icsHasta = e.target.value; pantallaICS(); };
+  document.getElementById('icsAplicar').onclick = aplicarICS;
+}
+
+async function aplicarICS(){
+  const cat = leerCategoria('icsCat');
+  const proy = (document.getElementById('icsProy')||{}).value?.trim() || '';
+  const dentro = planICS.filter(e => e.fecha >= icsDesde && e.fecha <= icsHasta);
+
+  // Si ya se había importado antes, actualiza en vez de duplicar (por el UID del ics)
+  let nuevos = 0, actualizados = 0;
+  dentro.forEach(e => {
+    const clave = 'ics:' + e.uid;
+    const ya = eventos.find(x => x.origenICS === clave);
+    const campos = {titulo:e.titulo, fecha:e.fecha, fechaFin:e.fechaFin||'', hora:e.hora,
+      todoDia:!e.hora, lugar:e.lugar, notas:e.notas, categoria:cat, proyecto:proy};
+    if(ya){ Object.assign(ya, campos); actualizados++; }
+    else {
+      eventos.push({id:uid(), origenICS:clave, ticket:'', coste:null, garantia:'',
+        repite:'no', anual:false, estado:'confirmado', privado:false, imagen:'', enInicio:false,
+        creado:new Date().toISOString(), ...campos});
+      nuevos++;
+    }
+  });
+
+  await persistirE();
+  cerrarSheet(); irA('eventos');
+  aviso(`${nuevos} nuevos${actualizados ? ', '+actualizados+' actualizados' : ''}`);
+  planICS = null;
+}
+
 /* ---------- Pantalla de confirmación del volcado ---------- */
 let planExcel = null, borrarFaltantes = false;
 
@@ -4646,11 +4817,11 @@ const AYUDA = [
   ['📋', 'Datos',
    'Fichas de lo que consultas de vez en cuando: matrículas, pólizas, medidas, códigos. Toca un valor y se copia. Se agrupan por la misma categoría que el resto de la app, y nacen marcadas como privadas.'],
   ['🧭', 'Mostrar en Inicio',
-   'Cualquier tarea, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado con una brújula en su tarjeta. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
+   'Cualquier tarea, evento, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado como una tarjeta, igual que en Notas. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
   ['🏷️', 'Categorías',
    'Una sola lista compartida por los cuatro módulos, así que el buscador puede cruzarlas. Puedes elegir de las que vienen o escribir una nueva: en cuanto la uses, queda disponible en toda la app y recibe su propio color. Antes había etiquetas en Notas y grupos en Datos; lo que tenías se ha traspasado solo.'],
   ['🔍', 'Buscar',
-   'El botón verde flotante. Busca en todo a la vez y aguanta erratas: "cerbo" encuentra "cerco". Entiende meses ("coche agosto") y tiene atajos: garantía, gastos, atrasado, pendientes.'],
+   'El botón verde flotante. Busca en todo a la vez y aguanta erratas: "cerbo" encuentra "cerco". Entiende sinónimos: "cambio de ruedas" encuentra "neumáticos", "médico" encuentra "doctor". Entiende meses ("coche agosto") y tiene atajos: garantía, gastos, atrasado, pendientes.'],
   ['📋', 'Pegar y fotos',
    'El botón del portapapeles, arriba. Pega un mensaje de WhatsApp o del correo y saca la fecha, la hora, el lugar y los códigos. También lee texto de una foto o captura, aunque no la letra a mano. Lo que lee de la foto queda guardado por dentro, así que el buscador encuentra el ticket aunque el título no lo mencione. Si tienes la app instalada, puedes compartir directamente desde WhatsApp a Bitácora.'],
   ['➕', 'La barra de abajo',
@@ -4660,9 +4831,11 @@ const AYUDA = [
   ['🔒', 'Privado y copias',
    'El interruptor "Privado" impide que algo salga en "Exportar para IA". No es cifrado: no guardes aquí contraseñas ni números de tarjeta, ni siquiera marcados.'],
   ['🧭', 'Mostrar en Inicio',
-   'Cualquier tarea, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado con una brújula en su tarjeta. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
+   'Cualquier tarea, evento, nota o ficha puede anclarse a la pantalla de Inicio con ese interruptor, y aparecerá en el bloque Fijado como una tarjeta, igual que en Notas. Es distinto de la chincheta de Notas, que solo sube la nota dentro de su propio módulo.'],
   ['🏷️', 'Categorías',
    'Una sola lista compartida por los cuatro módulos, así que el buscador puede cruzarlas. Puedes elegir de las que vienen o escribir una nueva: en cuanto la uses queda disponible en toda la app y recibe su propio color. Antes había etiquetas en Notas y grupos en Datos; lo que tenías se ha traspasado solo.'],
+  ['📥', 'Importar calendario (.ics)',
+   'Para traer una copia puntual de un calendario externo: la liga de un equipo, festivos, etc. Filtra el rango de fechas y le pones categoría y proyecto. Si lo vuelves a importar más adelante, actualiza lo que haya cambiado en vez de duplicar. Para calendarios que cambian mucho (partidos que se retransmiten), mejor suscribirte desde tu propio calendario del móvil: ahí se mantiene solo, sin que tengas que reimportar nada.'],
   ['📊', 'Excel · para trabajar',
    'Se saca por años: "Dame el Excel de 2025" y sale solo ese año, ligero y sin ruido. Edítalo en el ordenador y pulsa "Cargar Excel": coteja fila a fila por la columna ID, así que puedes cambiar títulos, fechas o categorías sin perder nada. Y como sabe de qué año es, nunca toca el resto de tu historia aunque marques la casilla de borrar. No borres la columna ID ni la fila de títulos. Lo que el Excel no guarda (fotos, colores, marcas de privado) se conserva de lo que ya tenías.'],
   ['💾', 'Copia .json · tu seguro',
@@ -4858,7 +5031,7 @@ function menuCopias(){
 
   document.querySelectorAll('#sheet [data-op]').forEach(b => b.onclick = () => ({
     excel:menuExcel, csv:() => { exportarCSV(); aviso('CSV descargados'); cerrarSheet(); },
-    ia:menuIA, ics:exportarCalendario, enviar:menuEnviar, copia:exportarCopia,
+    ia:menuIA, ics:exportarCalendario, icsimport:elegirICS, enviar:menuEnviar, copia:exportarCopia,
     importar:importarCopia, volcar:elegirExcel, vaciar:vaciarTodo,
     papelera:menuPapelera, ayuda:menuAyuda
   })[b.dataset.op]());
