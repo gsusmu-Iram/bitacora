@@ -731,6 +731,9 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
   font-size:17px;letter-spacing:-.015em;line-height:1.25;margin-bottom:3px}
 .alarma.suena .txt b{color:var(--oxblood)}
 .alarma .txt span{display:block;font-size:13px;color:var(--muted);line-height:1.4}
+.alarma .txt .cuenta{font-family:"JetBrains Mono",monospace;font-size:13px;
+  color:var(--gold);font-weight:600;letter-spacing:.02em;margin-bottom:1px}
+.alarma.suena .txt .cuenta{color:var(--oxblood)}
 .alarma .flecha{flex:none;align-self:center;width:16px;height:16px;stroke:var(--muted);
   stroke-width:2;fill:none;opacity:.45}
 
@@ -952,7 +955,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v17';
+const VERSION_APP = 'v18';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1690,11 +1693,28 @@ function renderInicio(){
   const dd = x => dias(x.fecha);
   const deHoy = conFecha.filter(x => dd(x) === 0)
     .sort((a,b) => (a.hora?1:0)-(b.hora?1:0) || (a.hora||'').localeCompare(b.hora||''));
-  const vencido = conFecha.filter(x => dd(x) < 0)
+  // Un evento pasado ya ocurrió: no hay nada que confirmar. Solo las tareas vencidas reclaman.
+  const vencido = conFecha.filter(x => dd(x) < 0 && x.tipo === 'tarea')
     .sort((a,b) => b.fecha.localeCompare(a.fecha) || (b.alta?1:0)-(a.alta?1:0));
   const semana = conFecha.filter(x => dd(x) > 0 && dd(x) <= 7)
     .sort((a,b) => a.fecha.localeCompare(b.fecha) || (a.hora?1:0)-(b.hora?1:0) || (a.hora||'').localeCompare(b.hora||''));
   const reclaman = deHoy.length + vencido.length;
+
+  // Lo próximo con hora, para poder decir cuánto falta
+  const ahoraMs = Date.now();
+  const conHora = conFecha
+    .filter(x => x.hora && new Date(x.fecha + 'T' + x.hora).getTime() > ahoraMs)
+    .sort((a,b) => new Date(a.fecha+'T'+a.hora) - new Date(b.fecha+'T'+b.hora));
+  const proximo = conHora[0];
+  const cuantoFalta = () => {
+    if(!proximo) return '';
+    const min = Math.round((new Date(proximo.fecha+'T'+proximo.hora).getTime() - ahoraMs) / 60000);
+    if(min < 60) return `faltan ${min} min`;
+    const h = Math.floor(min/60), m = min % 60;
+    if(h < 24) return `faltan ${h}h${m ? ' ' + m + 'min' : ''}`;
+    const d2 = Math.round(h/24);
+    return `en ${d2} día${d2 === 1 ? '' : 's'}`;
+  };
 
   // Lo anclado a mano, de cualquier módulo
   const anclado = [
@@ -1718,33 +1738,46 @@ function renderInicio(){
   };
 
   // ---- La alarma, en una frase ----
-  let frase, detalle;
+  let frase, detalle, marca = '';
+  const hoyMismo = proximo && proximo.fecha === hoy;
+
   if(reclaman){
-    frase = `${reclaman} ${reclaman === 1 ? 'cosa te reclama' : 'cosas te reclaman'}`;
     const partes = [];
     if(deHoy.length) partes.push(`${deHoy.length} para hoy`);
     if(vencido.length){
       const v = -dd(vencido[vencido.length - 1]);
-      partes.push(`${vencido.length} ${vencido.length===1?'vencida':'vencidas'}${
+      partes.push(`${vencido.length} ${vencido.length===1?'tarea vencida':'tareas vencidas'}${
         v > 1 ? `, la más antigua de hace ${v} días` : ''}`);
     }
+    frase = `${reclaman} ${reclaman === 1 ? 'cosa por delante' : 'cosas por delante'}`;
     detalle = partes.join(' · ');
+    // Si lo siguiente es hoy y tiene hora, eso manda
+    if(hoyMismo){ frase = proximo.titulo; marca = `${cuantoFalta()} · ${proximo.hora}`; }
   } else {
-    frase = 'Nada te reclama hoy';
-    const sig = semana[0] || conFecha.filter(x => dd(x) > 0).sort((a,b) => a.fecha.localeCompare(b.fecha))[0];
+    const sig = proximo || semana[0];
     if(sig){
       const f = new Date(sig.fecha+'T00:00:00'), n = dias(sig.fecha);
-      detalle = `Lo siguiente${n === 1 ? ' es mañana' : ` es el ${DIAS[f.getDay()]}`}: ${sig.titulo}`;
-    } else detalle = 'No tienes nada con fecha por delante';
+      if(sig.hora && n <= 1){
+        frase = sig.titulo;
+        marca = `${cuantoFalta()} · ${n === 1 ? 'mañana ' : ''}${sig.hora}`;
+        detalle = '';
+      } else {
+        frase = 'Nada te reclama hoy';
+        detalle = `Lo siguiente${n === 1 ? ' es mañana' : n === 0 ? ' es hoy' : ` es el ${DIAS[f.getDay()]}`}: ${sig.titulo}`;
+      }
+    } else { frase = 'Nada te reclama hoy'; detalle = 'No tienes nada con fecha por delante'; }
   }
 
   let html = `<div class="hoy-cab">
     <div class="hoy-fecha">${DIAS[d.getDay()].charAt(0).toUpperCase()+DIAS[d.getDay()].slice(1)}, ${d.getDate()} de ${MESES_L[d.getMonth()].toLowerCase()}</div>
   </div>
-  <button class="alarma ${reclaman ? 'suena' : ''}" ${reclaman ? 'data-ir="tareas"' : ''}>
-    <span class="campana">${reclaman ? '🔔' : '🧭'}</span>
-    <span class="txt"><b>${frase}</b><span>${esc(detalle)}</span></span>
-    ${reclaman ? `<svg class="flecha" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+  <button class="alarma ${vencido.length ? 'suena' : ''}"
+    ${proximo && marca ? `data-abrir-${proximo.tipo === 'evento' ? 'ev' : 'ta'}="${proximo.id}"` : reclaman ? 'data-ir="tareas"' : ''}>
+    <span class="campana">${vencido.length ? '🔔' : marca ? '⏱' : '🧭'}</span>
+    <span class="txt"><b>${esc(frase)}</b>
+      ${marca ? `<span class="cuenta">${esc(marca)}</span>` : ''}
+      ${detalle ? `<span>${esc(detalle)}</span>` : ''}</span>
+    ${(reclaman || marca) ? `<svg class="flecha" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
   </button>`;
 
   if(deHoy.length) html += `<div class="sub-rot">Hoy</div><div class="tarj">${deHoy.map(fila).join('')}</div>`;
@@ -1821,7 +1854,12 @@ function renderInicio(){
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
   if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
+
+  // La cuenta atrás se refresca sola mientras estés en Inicio
+  clearInterval(relojInicio);
+  if(marca) relojInicio = setInterval(() => { if(vista === 'inicio') renderInicio(); }, 30000);
 }
+let relojInicio = null;
 
 /* ============================================================
    NOTAS
@@ -4556,7 +4594,7 @@ const AYUDA = [
   ['🧭', 'Qué es esto',
    'Tu archivo personal: eventos, tareas, notas, listas y datos de referencia, todo en un sitio y sin depender de Google. Los datos se guardan en tu dispositivo, no en un servidor.'],
   ['🏠', 'Inicio · tu aviso',
-   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador. Arriba te dice en una frase qué te reclama: "3 cosas te reclaman · 1 para hoy, 2 vencidas". Si no hay nada, te lo dice y se calla. Debajo, todo lo que tenga fecha (eventos, tareas y subtareas) entra solo: Hoy, Vencido y los próximos 7 días. Lo demás lo eliges tú con 🧭 Mostrar en Inicio, y aparece en el bloque Fijado: notas, listas, fichas o tareas sin fecha.'],
+   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador. Arriba, lo próximo que toca con su cuenta atrás: "cumpleaños de Eneida · faltan 4h 26min". Si tienes tareas vencidas, la campana se pone en granate y te dice cuántas. Los eventos pasados no cuentan: ya ocurrieron, no hay nada que confirmar. Si no hay nada, te lo dice y se calla. Debajo, todo lo que tenga fecha (eventos, tareas y subtareas) entra solo: Hoy, Vencido y los próximos 7 días. Lo demás lo eliges tú con 🧭 Mostrar en Inicio, y aparece en el bloque Fijado: notas, listas, fichas o tareas sin fecha.'],
   ['📅', 'Eventos',
    'Cuatro vistas: Mes, 3 días, 1 día y Gastos. Cada evento admite hora, lugar, coste, ticket, garantía y repetición. Si dura varios días, rellena "Hasta" y aparecerá en todos ellos indicando "día 3 de 7". El botón "Añadir al calendario" lo manda a la app de tu móvil, que sí puede avisarte.'],
   ['✓', 'Tareas',
