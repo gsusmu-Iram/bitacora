@@ -213,9 +213,11 @@ main{padding:6px 18px 30px}
 .cal-d.hoy{background:var(--pine);color:#fff;font-weight:700}
 .cal-d.sel{box-shadow:inset 0 0 0 2px var(--ink)}
 .cal-d.hoy.sel{box-shadow:inset 0 0 0 2px var(--ink)}
-.cal-d i{width:4px;height:4px;border-radius:50%;background:var(--pine);display:block}
-.cal-d.hoy i{background:rgba(255,255,255,.85)}
-.cal-d.out i{opacity:0}
+.cal-d .barras{display:flex;flex-direction:column;gap:1px;width:100%;padding:0 4px;box-sizing:border-box}
+.cal-d .barras b{display:block;height:3px;border-radius:2px;position:relative}
+.cal-d .barras b em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-size:6px;font-weight:700;color:rgba(255,255,255,.95);line-height:1}
+.cal-d.out .barras{opacity:0}
 
 /* Hechas */
 .done-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 2px;
@@ -968,7 +970,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v27';
+const VERSION_APP = 'v29';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1046,10 +1048,10 @@ function sumaDias(f,n){ const d = new Date(f+'T00:00:00'); d.setDate(d.getDate()
 
 // Colores por categoría (barra, punto y bloque horario)
 const COLOR_CAT = {
-  casa:'#3E6E8E', marines:'#2C5F4A', coche:'#B0802A', familia:'#8A5FA8', salud:'#8E2F26',
+  casa:'#3E6E8E', marines:'#2C5F4A', coche:'#B0802A', familia:'#8A9B4F', salud:'#8E2F26',
   trabajo:'#4A5D8A', 'trámites':'#5C7A6E', tramites:'#5C7A6E', finanzas:'#2F6F8F',
-  compras:'#7A6A9E', ocio:'#C2743F', 'películas':'#9B4A6B', peliculas:'#9B4A6B',
-  recetas:'#A8632F', documentos:'#6B6F7A', medidas:'#4E7A6A', personal:'#7C6A5A'
+  compras:'#6F5FA8', ocio:'#C2743F', 'películas':'#9B4A6B', peliculas:'#9B4A6B',
+  recetas:'#A8632F', documentos:'#6B6F7A', medidas:'#4E7A6A', personal:'#3E8A82'
 };
 // Las categorías que añadas tú reciben un color estable, sacado de su nombre
 function colorCat(c){
@@ -1135,10 +1137,14 @@ const diaDe = (e, f) => {
 const eventosDe = f => eventos.filter(e => abarca(e, f))
   .sort((a,b) => (a.hora ? 1 : 0) - (b.hora ? 1 : 0) || (a.hora||'').localeCompare(b.hora||''));
 
-async function persistirT(){ await Store.save('tareas:v1', tareas); }
-async function persistirE(){ await Store.save('eventos:v1', eventos); }
-async function persistirN(){ await Store.save('notas:v1', notas); }
-async function persistirD(){ await Store.save('fichas:v1', fichas); }
+// Cada guardado deja constancia de cuándo fue, para poder comparar qué copia es más nueva
+let ultimaEdicion = null;
+async function marcarEdicion(){ ultimaEdicion = new Date().toISOString(); await Store.save('ultimaEdicion:v1', ultimaEdicion); }
+
+async function persistirT(){ await Store.save('tareas:v1', tareas); await marcarEdicion(); }
+async function persistirE(){ await Store.save('eventos:v1', eventos); await marcarEdicion(); }
+async function persistirN(){ await Store.save('notas:v1', notas); await marcarEdicion(); }
+async function persistirD(){ await Store.save('fichas:v1', fichas); await marcarEdicion(); }
 
 const COLORES_NOTA = [
   {k:'bone',  c:'#FFFFFF'}, {k:'sage', c:'#E3EBE1'}, {k:'arena', c:'#F3E9D6'},
@@ -1358,7 +1364,8 @@ async function marcar(id){
     t.previo = null; render(); await persistirT(); aviso(`Restaurada · ${t.titulo}`);
   } else {
     if(!t.parentId){ t.previo = {}; hijas(t.id).forEach(s => { t.previo[s.id] = s.estado; s.estado = 'hecha'; }); }
-    t.estado = 'hecha'; render(); await persistirT(); aviso(`Hecho · ${t.titulo}`, () => marcar(id));
+    t.estado = 'hecha'; t.completadoEn = new Date().toISOString();
+    render(); await persistirT(); aviso(`Hecho · ${t.titulo}`, () => marcar(id));
   }
 }
 
@@ -1405,7 +1412,7 @@ function filaEvento(e, diaCtx){
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
         <div style="min-width:0;flex:1">
           <div class="ev-hora">${e.hora ? e.hora : (largo > 1 ? 'VARIOS DÍAS' : 'TODO EL DÍA')}</div>
-          <div class="ev-tit">${esc(e.titulo)}</div>
+          <div class="ev-tit" style="color:${colorCat(e.categoria)}">${esc(e.titulo)}</div>
         </div>
         ${(e.coste||e.coste===0)?`<div class="ev-coste">${eur(e.coste)}</div>`:''}
       </div>
@@ -1530,10 +1537,14 @@ function vistaMes(){
   for(let d=1;d<=total;d++){
     const f = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const cls = [f===hoyISO()?'hoy':'', f===calSel?'sel':''].filter(Boolean).join(' ');
-    const puntos = (conEv[f]||[]).slice(0,3).map(e =>
-      `<i style="background:${colorCat(e.categoria)}"></i>`).join('');
+    const evsDia = conEv[f] || [];
+    const barras = evsDia.slice(0,4).map((e,i) => {
+      const resto = evsDia.length - 4;
+      const em = (i===3 && resto>0) ? `<em>+${resto}</em>` : '';
+      return `<b style="background:${colorCat(e.categoria)}">${em}</b>`;
+    }).join('');
     celdas += `<button class="cal-d ${cls}" data-dia="${f}">${d}
-      <span style="display:flex;gap:2px;height:4px">${puntos}</span></button>`;
+      <span class="barras">${barras}</span></button>`;
   }
 
   const dia = new Date(calSel+'T00:00:00');
@@ -1768,7 +1779,7 @@ function renderInicio(){
       : `<span class="marca" style="background:${x.color}"></span>`;
     const sub = [x.extra, x.tramo].filter(Boolean).join(' · ');
     return `<button class="p-fila" data-abrir-${x.tipo === 'evento' ? 'ev' : 'ta'}="${x.id}">
-      ${izq}<span class="cuerpo"><b>${esc(x.titulo)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</span>
+      ${izq}<span class="cuerpo"><b style="color:${x.tipo==='evento'?x.color:'inherit'}">${esc(x.titulo)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</span>
       <span class="cuando ${n < 0 ? 'rojo' : ''}">${cuando}</span></button>`;
   };
 
@@ -1844,6 +1855,32 @@ function renderInicio(){
       const et = n === 1 ? 'Mañana' : `${DIAS[fe.getDay()].charAt(0).toUpperCase()+DIAS[fe.getDay()].slice(1)} ${fe.getDate()}`;
       return `<div class="sub-rot dia">${et}</div><div class="tarj">${g[f].map(fila).join('')}</div>`;
     }).join('');
+  }
+
+  // ---- Un año atrás: qué pasó este mismo día, doce meses antes ----
+  const haceUnAnio = iso(new Date(d.getFullYear()-1, d.getMonth(), d.getDate()));
+  const recuerdos = [];
+  eventos.filter(e => e.estado !== 'cancelado').forEach(e => {
+    if(e.fecha === haceUnAnio) recuerdos.push({tipo:'evento', o:e});
+  });
+  tareas.filter(t => t.estado === 'hecha' && t.completadoEn && t.completadoEn.slice(0,10) === haceUnAnio)
+    .forEach(t => recuerdos.push({tipo:'tarea', o:t}));
+
+  if(recuerdos.length){
+    html += `<div class="sub-rot">Hace un año</div><div class="tarj">`;
+    html += recuerdos.map(({tipo, o}) => {
+      if(tipo === 'evento'){
+        const extra = [o.lugar, o.coste ? eur(o.coste) : ''].filter(Boolean).join(' · ');
+        return `<button class="p-fila" data-abrir-ev="${o.id}">
+          <span class="marca" style="background:${colorCat(o.categoria)}"></span>
+          <span class="cuerpo"><b style="color:${colorCat(o.categoria)}">${esc(o.titulo)}</b>
+            ${extra ? `<span>${esc(extra)}</span>` : ''}</span></button>`;
+      }
+      return `<button class="p-fila" data-abrir-ta="${o.id}">
+        <span class="p-check" style="background:var(--pine);border-color:var(--pine)"></span>
+        <span class="cuerpo"><b>${esc(o.titulo)}</b><span>completada ese día</span></span></button>`;
+    }).join('');
+    html += `</div>`;
   }
 
   // ---- Lo que has anclado tú: todo como tarjeta, igual que en Notas ----
@@ -3906,6 +3943,9 @@ async function bajar(nombre, contenido, tipo, ofrecerGuardar){
 }
 const sello = () => { const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+// Con la hora, para que dos copias del mismo día no se confundan por el nombre
+const selloHora = () => { const d = new Date();
+  return `${sello()}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`; };
 
 // Las tres tablas, ya aplanadas y en el orden en que se leen bien
 function tablas(a){
@@ -4023,7 +4063,7 @@ function exportarCSV(){
 function copiaJSON(conImagenes = true){
   const limpiar = arr => conImagenes ? arr : arr.map(x => { const y = {...x}; delete y.imagen; return y; });
   return JSON.stringify({
-    version:2, fecha:new Date().toISOString(), imagenes:conImagenes,
+    version:2, fecha:new Date().toISOString(), ultimaEdicion, imagenes:conImagenes,
     tareas:limpiar(tareas), eventos:limpiar(eventos), notas, fichas
   }, null, 2);
 }
@@ -4033,7 +4073,7 @@ const pesoCopia = con => {
 };
 
 async function exportarCopia(){
-  await bajar(`bitacora-copia-${sello()}.json`, copiaJSON(), 'application/json', true);
+  await bajar(`bitacora-copia-${selloHora()}.json`, copiaJSON(), 'application/json', true);
   marcarCopia();
   aviso('Copia guardada');
   cerrarSheet();
@@ -4067,7 +4107,7 @@ function menuEnviar(){
 }
 
 async function compartirCopia(conImagenes = true){
-  const nombre = `bitacora-copia-${sello()}.json`;
+  const nombre = `bitacora-copia-${selloHora()}.json`;
   // .txt viaja mejor por WhatsApp que .json, y se importa igual
   const archivo = new File([copiaJSON(conImagenes)], nombre, {type:'application/json'});
   try{
@@ -4159,11 +4199,33 @@ function elegirCopia(){
 
     const n = (d.tareas||[]).length + (d.eventos||[]).length + (d.notas||[]).length + (d.fichas||[]).length;
     const mio = tareas.length + eventos.length + notas.length + fichas.length;
-    if(!confirm(`La copia trae ${n} elementos y aquí tienes ${mio}.\n\n` +
+
+    // La comparación de verdad: no cuántos elementos trae, sino cuál se editó más tarde
+    const fechaArchivo = d.ultimaEdicion || d.fecha || null;
+    let avisoFecha = '';
+    if(fechaArchivo && ultimaEdicion){
+      const fa = new Date(fechaArchivo), fl = new Date(ultimaEdicion);
+      const fmt = x => x.toLocaleString('es-ES', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+      if(fa < fl){
+        avisoFecha = `\n\n⚠️ Este archivo es de ${fmt(fa)}, y lo que tienes aquí es más nuevo (de ${fmt(fl)}). ` +
+          'Si continúas, perderás los cambios hechos después de esa fecha.';
+      } else if(fa > fl){
+        avisoFecha = `\n\n✓ Este archivo es más nuevo (de ${fmt(fa)}) que lo que tienes aquí (de ${fmt(fl)}). Es seguro continuar.`;
+      } else {
+        avisoFecha = `\n\nEste archivo y lo que tienes aquí son de la misma edición.`;
+      }
+    } else if(fechaArchivo){
+      const fmt = x => x.toLocaleString('es-ES', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+      avisoFecha = `\n\nEste archivo es de ${fmt(new Date(fechaArchivo))}.`;
+    }
+
+    if(!confirm(`La copia trae ${n} elementos y aquí tienes ${mio}.${avisoFecha}\n\n` +
                 'Al restaurar se reemplaza TODO lo de este aparato. ¿Seguir?')) return;
 
     tareas = d.tareas || []; eventos = d.eventos || []; notas = d.notas || []; fichas = d.fichas || [];
     vacia = true; await Store.save('vacia:v1', true);
+    ultimaEdicion = fechaArchivo || new Date().toISOString();
+    await Store.save('ultimaEdicion:v1', ultimaEdicion);
     notas.forEach(x => {
       x.tipo = x.tipo || 'texto'; x.items = x.items || [];
       if(x.contenido) while(/&amp;(amp|nbsp|lt|gt|quot|#39);/i.test(x.contenido))
@@ -4837,7 +4899,7 @@ const AYUDA = [
   ['🧭', 'Qué es esto',
    'Tu archivo personal: eventos, tareas, notas, listas y datos de referencia, todo en un sitio y sin depender de Google. Los datos se guardan en tu dispositivo, no en un servidor.'],
   ['🏠', 'Inicio · tu aviso',
-   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador. Arriba, lo próximo que toca con su cuenta atrás: "cumpleaños de Eneida · faltan 4h 26min". Si tienes tareas vencidas, la campana se pone en granate y te dice cuántas. Los eventos pasados no cuentan: ya ocurrieron, no hay nada que confirmar. Si no hay nada, te lo dice y se calla. Debajo, todo lo que tenga fecha (eventos, tareas y subtareas) entra solo: Hoy, Vencido y los próximos 7 días. Lo demás lo eliges tú con 🧭 Mostrar en Inicio, y aparece en el bloque Fijado: notas, listas, fichas o tareas sin fecha.'],
+   'Como la app no puede mandarte notificaciones, esta pantalla hace de despertador. Arriba, lo próximo que toca con su cuenta atrás: "cumpleaños de Eneida · faltan 4h 26min". Si tienes tareas vencidas, la campana se pone en granate y te dice cuántas. Los eventos pasados no cuentan: ya ocurrieron, no hay nada que confirmar. Si no hay nada, te lo dice y se calla. Debajo, todo lo que tenga fecha (eventos, tareas y subtareas) entra solo: Hoy, Vencido y los próximos 7 días. Si ese mismo día tuviste algo hace un año, sale en su propio bloque. Lo demás lo eliges tú con 🧭 Mostrar en Inicio, y aparece en el bloque Fijado: notas, listas, fichas o tareas sin fecha.'],
   ['📅', 'Eventos',
    'Cuatro vistas: Mes, 3 días, 1 día y Gastos. Cada evento admite hora, lugar, coste, ticket, garantía y repetición. Si dura varios días, rellena "Hasta" y aparecerá en todos ellos indicando "día 3 de 7". El botón "Añadir al calendario" lo manda a la app de tu móvil, que sí puede avisarte.'],
   ['✓', 'Tareas',
@@ -4872,6 +4934,8 @@ const AYUDA = [
    'Es lo único que recupera la app entera, con fotos incluidas. "Cargar copia" reemplaza TODO lo del aparato, así que sirve para restaurar o para pasar tus datos a otro móvil, no para actualizar. Al enviarla por WhatsApp puedes dejar las fotos fuera y baja de 200 kB a unos pocos.'],
   ['🗑️', 'Papelera',
    'Lo que borras no desaparece del todo: queda 30 días en la papelera, en el menú de arriba, por si te arrepientes. Pasado ese tiempo se va solo.'],
+  ['⏱️', 'Trabajar entre dos dispositivos',
+   'Cada guardado deja constancia de cuándo fue ("última edición", visible aquí abajo). Al restaurar una copia .json, la app compara esa fecha con la de tu aparato y te avisa con claridad: si el archivo es más viejo que lo que ya tienes, te dice cuánto y que vas a perder cambios; si es más nuevo, te confirma que es seguro seguir. Los nombres de los archivos exportados llevan también la hora, para poder distinguir dos copias del mismo día.'],
   ['⚠️', 'Dónde viven tus datos',
    'En este dispositivo, no en un servidor. Eso es bueno para tu privacidad, pero significa que si borras los datos de navegación del navegador, o desinstalas la app, se van con ellos. Baja una copia cada pocos días: el punto de arriba se pone en ámbar cuando hace más de una semana.']
 ];
@@ -4913,6 +4977,8 @@ function menuAyuda(){
       <div class="linea"><span>Versión</span><b>Bitácora ${VERSION_APP}</b></div>
       <div class="linea"><span>Guardado en</span><b>${
         {claude:'tu cuenta', navegador:'este dispositivo', memoria:'ningún sitio'}[Store.motor]}</b></div>
+      <div class="linea"><span>Última edición</span><b>${
+        ultimaEdicion ? new Date(ultimaEdicion).toLocaleString('es-ES', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : 'sin cambios aún'}</b></div>
       <div class="linea"><span>Última copia</span><b>${
         diasSinCopia() === null ? 'nunca' : diasSinCopia() === 0 ? 'hoy' : 'hace ' + diasSinCopia() + ' días'}</b></div>
       <div class="linea"><span>Registrado</span><b>${tareas.length + eventos.length + notas.length + fichas.length} elementos</b></div>
@@ -5239,6 +5305,7 @@ function recibirCompartido(){
         n = await Store.load('notas:v1'), fi = await Store.load('fichas:v1');
   vacia = !!(await Store.load('vacia:v1'));
   ultimaCopia = await Store.load('copia:v1');
+  ultimaEdicion = await Store.load('ultimaEdicion:v1');
   papelera = (await Store.load('papelera:v1')) || [];
   Store.pedirPermanencia();
   calSel = hoyISO();
