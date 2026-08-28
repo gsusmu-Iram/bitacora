@@ -968,7 +968,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v22';
+const VERSION_APP = 'v25';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1069,29 +1069,58 @@ function diasVisibles(){
 }
 
 // Eventos del mes que se muestra (para la agenda de abajo)
+// Cada entrada lleva pegada la fecha exacta de ESA ocurrencia (campo _f),
+// que puede ser de este año, de uno anterior o de uno futuro si se repite.
 function eventosDelMes(){
-  const ini = `${calAnio}-${String(calMes+1).padStart(2,'0')}-01`;
   const ultimo = new Date(calAnio, calMes+1, 0).getDate();
-  const fin = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${ultimo}`;
-  return eventos.filter(e => {
-    const f = fechaEfectiva(e); if(!f) return false;
-    if(f >= ini && f <= fin) return true;
-    // Los que empiezan antes del mes pero siguen dentro
-    const d = duraDias(e);
-    if(d > 1){ const hasta = iso(new Date(new Date(f+'T00:00:00').getTime() + (d-1)*864e5));
-      return hasta >= ini && f <= fin; }
-    return false;
-  }).sort((a,b) => (fechaEfectiva(a)+(a.hora?'1'+a.hora:'0')).localeCompare(fechaEfectiva(b)+(b.hora?'1'+b.hora:'0')));
+  const out = [], vistos = new Set();
+  for(let d = 1; d <= ultimo; d++){
+    const f = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    eventos.forEach(e => {
+      if(!abarca(e, f)) return;
+      const k = e.id + '|' + f;
+      if(vistos.has(k)) return;
+      vistos.add(k);
+      out.push(Object.assign({}, e, {_f: f}));
+    });
+  }
+  return out.sort((a,b) => (a._f+(a.hora?'1'+a.hora:'0')).localeCompare(b._f+(b.hora?'1'+b.hora:'0')));
 }
-// Un evento puede abarcar varios días: sale en todos ellos
+// ¿Cae este evento exactamente en el día f? Vale para cualquier ocurrencia,
+// pasada o futura, a diferencia de fechaEfectiva (que solo mira hacia adelante).
+function ocurreEn(e, f){
+  if(!e.fecha) return false;
+  const rep = repDe(e);
+  if(rep === 'no') return e.fecha === f;
+  if(f < e.fecha) return false;   // no hay ocurrencias antes de que se creara
+
+  if(rep === 'anual'){
+    // Mismo mes y día, cualquier año a partir del de creación
+    return f.slice(5) === e.fecha.slice(5);
+  }
+  const base = new Date(e.fecha+'T00:00:00'), dia = new Date(f+'T00:00:00');
+  if(rep === 'semanal')   return (dia - base) % (7  * 864e5) === 0;
+  if(rep === 'quincenal') return (dia - base) % (14 * 864e5) === 0;
+  // mensual / trimestral / semestral: mismo día del mes, a intervalos de N meses
+  if(dia.getDate() !== base.getDate()) return false;
+  const meses = (dia.getFullYear()-base.getFullYear())*12 + (dia.getMonth()-base.getMonth());
+  if(meses < 0) return false;
+  if(rep === 'mensual')    return true;
+  if(rep === 'trimestral') return meses % 3 === 0;
+  if(rep === 'semestral')  return meses % 6 === 0;
+  return false;
+}
+
+// Un evento puede abarcar varios días: sale en todos ellos, aunque se repita
 function abarca(e, f){
-  const ini = fechaEfectiva(e);
-  if(!ini) return false;
-  if(!e.fechaFin || e.fechaFin <= ini) return ini === f;
-  // Si se repite, la duración se arrastra a la vez que la fecha
+  if(!e.fecha) return false;
+  if(!e.fechaFin || e.fechaFin <= e.fecha) return ocurreEn(e, f);
   const dur = Math.round((new Date(e.fechaFin+'T00:00:00') - new Date(e.fecha+'T00:00:00')) / 864e5);
-  const fin = iso(new Date(new Date(ini+'T00:00:00').getTime() + dur*864e5));
-  return f >= ini && f <= fin;
+  for(let i = 0; i <= dur; i++){
+    const ini = iso(new Date(new Date(f+'T00:00:00').getTime() - i*864e5));
+    if(ocurreEn(e, ini)) return true;
+  }
+  return false;
 }
 const duraDias = e => {
   if(!e.fechaFin || !e.fecha || e.fechaFin <= e.fecha) return 1;
@@ -1494,14 +1523,7 @@ function vistaMes(){
   const arranque = (primero.getDay() + 6) % 7;
   const total = new Date(calAnio, calMes+1, 0).getDate();
   const conEv = {};
-  eventos.forEach(e => {
-    const f = fechaEfectiva(e); if(!f) return;
-    const d = duraDias(e);
-    for(let i = 0; i < d; i++){
-      const dia = iso(new Date(new Date(f+'T00:00:00').getTime() + i*864e5));
-      (conEv[dia] = conEv[dia] || []).push(e);
-    }
-  });
+  eventosDelMes().forEach(e => { (conEv[e._f] = conEv[e._f] || []).push(e); });
 
   let celdas = '';
   for(let i=0;i<arranque;i++) celdas += `<div class="cal-d out"></div>`;
@@ -1604,15 +1626,8 @@ function renderEventos(){
     html += `<div class="empty"><h2>Mes despejado</h2><p>No hay nada anotado en ${MESES_L[calMes].toLowerCase()}.</p></div>`;
   } else {
     const g = {};
-    mes.forEach(e => {
-      const f = fechaEfectiva(e), largo = duraDias(e);
-      // Un evento largo aparece en cada día que ocupa dentro del mes
-      for(let i = 0; i < largo; i++){
-        const dia = iso(new Date(new Date(f+'T00:00:00').getTime() + i*864e5));
-        if(Number(dia.slice(5,7)) - 1 !== calMes || dia.slice(0,4) !== String(calAnio)) continue;
-        (g[dia] = g[dia] || []).push(e);
-      }
-    });
+    // eventosDelMes ya trae, en _f, el día exacto de cada ocurrencia dentro del mes
+    mes.forEach(e => { (g[e._f] = g[e._f] || []).push(e); });
     html += Object.keys(g).sort().map(k => {
       const t = etiquetaGrupo(k);
       return `<section class="group ${t.cls}">
@@ -1758,7 +1773,9 @@ function renderInicio(){
   };
 
   // ---- La alarma, en una frase ----
-  let frase, detalle, marca = '';
+  // 'objetivo' es lo que se abre al tocar el banner: siempre debe apuntar a algo,
+  // tenga o no cuenta atrás (un cumpleaños de todo el día también hay que poder abrirlo).
+  let frase, detalle, marca = '', objetivo = null;
   const hoyMismo = proximo && proximo.fecha === hoy;
 
   if(reclaman){
@@ -1772,10 +1789,11 @@ function renderInicio(){
     frase = `${reclaman} ${reclaman === 1 ? 'cosa por delante' : 'cosas por delante'}`;
     detalle = partes.join(' · ');
     // Si lo siguiente es hoy y tiene hora, eso manda
-    if(hoyMismo){ frase = proximo.titulo; marca = `${cuantoFalta()} · ${proximo.hora}`; }
+    if(hoyMismo){ frase = proximo.titulo; marca = `${cuantoFalta()} · ${proximo.hora}`; objetivo = proximo; }
   } else {
     const sig = proximo || semana[0];
     if(sig){
+      objetivo = sig;
       const f = new Date(sig.fecha+'T00:00:00'), n = dias(sig.fecha);
       if(sig.hora && n <= 1){
         frase = sig.titulo;
@@ -1783,7 +1801,12 @@ function renderInicio(){
         detalle = '';
       } else {
         frase = 'Nada te reclama hoy';
-        detalle = `Lo siguiente${n === 1 ? ' es mañana' : n === 0 ? ' es hoy' : ` es el ${DIAS[f.getDay()]}`}: ${sig.titulo}`;
+        // El nombre del día ("es el jueves") solo tiene sentido dentro de la semana.
+        // Más lejos, mejor la fecha completa: "es el 7 de enero".
+        const cuando = n === 1 ? 'es mañana' : n === 0 ? 'es hoy'
+          : n <= 7 ? `es el ${DIAS[f.getDay()]}`
+          : `es el ${f.getDate()} de ${MESES_L[f.getMonth()]}${f.getFullYear() !== d.getFullYear() ? ' de ' + f.getFullYear() : ''}`;
+        detalle = `Lo siguiente ${cuando}: ${sig.titulo}`;
       }
     } else { frase = 'Nada te reclama hoy'; detalle = 'No tienes nada con fecha por delante'; }
   }
@@ -1792,12 +1815,12 @@ function renderInicio(){
     <div class="hoy-fecha">${DIAS[d.getDay()].charAt(0).toUpperCase()+DIAS[d.getDay()].slice(1)}, ${d.getDate()} de ${MESES_L[d.getMonth()].toLowerCase()}</div>
   </div>
   <button class="alarma ${vencido.length ? 'suena' : ''}"
-    ${proximo && marca ? `data-abrir-${proximo.tipo === 'evento' ? 'ev' : 'ta'}="${proximo.id}"` : reclaman ? 'data-ir="tareas"' : ''}>
+    ${objetivo ? `data-abrir-${objetivo.tipo === 'evento' ? 'ev' : 'ta'}="${objetivo.id}"` : reclaman ? 'data-ir="tareas"' : ''}>
     <span class="campana">${vencido.length ? '🔔' : marca ? '⏱' : '🧭'}</span>
     <span class="txt"><b>${esc(frase)}</b>
       ${marca ? `<span class="cuenta">${esc(marca)}</span>` : ''}
       ${detalle ? `<span>${esc(detalle)}</span>` : ''}</span>
-    ${(reclaman || marca) ? `<svg class="flecha" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+    ${(reclaman || objetivo) ? `<svg class="flecha" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
   </button>`;
 
   if(deHoy.length) html += `<div class="sub-rot">Hoy</div><div class="tarj">${deHoy.map(fila).join('')}</div>`;
