@@ -968,7 +968,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v21';
+const VERSION_APP = 'v22';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1712,10 +1712,15 @@ function renderInicio(){
     .sort((a,b) => b.fecha.localeCompare(a.fecha) || (b.alta?1:0)-(a.alta?1:0));
   const semana = conFecha.filter(x => dd(x) > 0 && dd(x) <= 7)
     .sort((a,b) => a.fecha.localeCompare(b.fecha) || (a.hora?1:0)-(b.hora?1:0) || (a.hora||'').localeCompare(b.hora||''));
-  const reclaman = deHoy.length + vencido.length;
+
+  const ahoraMs = Date.now();
+  // Un evento de hoy con hora ya pasada tampoco reclama: ya ocurrió, igual que uno de ayer.
+  // Las tareas y los eventos "todo el día" siguen contando durante toda la jornada.
+  const yaPaso = x => x.tipo === 'evento' && x.hora && new Date(x.fecha+'T'+x.hora).getTime() <= ahoraMs;
+  const pendienteHoy = deHoy.filter(x => !yaPaso(x));
+  const reclaman = pendienteHoy.length + vencido.length;
 
   // Lo próximo con hora, para poder decir cuánto falta
-  const ahoraMs = Date.now();
   const conHora = conFecha
     .filter(x => x.hora && new Date(x.fecha + 'T' + x.hora).getTime() > ahoraMs)
     .sort((a,b) => new Date(a.fecha+'T'+a.hora) - new Date(b.fecha+'T'+b.hora));
@@ -1758,7 +1763,7 @@ function renderInicio(){
 
   if(reclaman){
     const partes = [];
-    if(deHoy.length) partes.push(`${deHoy.length} para hoy`);
+    if(pendienteHoy.length) partes.push(`${pendienteHoy.length} para hoy`);
     if(vencido.length){
       const v = -dd(vencido[vencido.length - 1]);
       partes.push(`${vencido.length} ${vencido.length===1?'tarea vencida':'tareas vencidas'}${
