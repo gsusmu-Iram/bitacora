@@ -106,10 +106,10 @@ button{background:none;border:none;cursor:pointer}
 .dia-vacio{font-size:13.5px;color:var(--muted);font-style:italic;margin-bottom:9px}
 .add-dia{width:100%;padding:11px;border:1px dashed var(--line);border-radius:10px;
   color:var(--pine);font-weight:600;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:7px}
-.mini-ev{display:flex;align-items:center;gap:9px;padding:7px 0;width:100%;text-align:left}
-.mini-ev i{width:8px;height:8px;border-radius:50%;flex:none}
+.mini-ev{display:flex;align-items:center;gap:12px;padding:9px 4px;width:100%;text-align:left}
+.mini-ev .marca{flex:none;width:4px;height:30px;border-radius:99px}
 .mini-ev .h{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted);flex:none}
-.mini-ev .t{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-ev .t{flex:1;min-width:0;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Leyenda */
 .leyenda{display:flex;flex-wrap:wrap;gap:11px;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:10px}
@@ -972,7 +972,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v31';
+const VERSION_APP = 'v32';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1555,7 +1555,7 @@ function vistaMes(){
     <div class="cab">${DIAS[dia.getDay()].slice(0,3)} ${dia.getDate()} — ${MESES_L[dia.getMonth()]}</div>
     ${lista.length
       ? lista.map(e => `<button class="mini-ev" data-edite="${e.id}">
-          <i style="background:${colorCat(e.categoria)}"></i>
+          <span class="marca" style="background:${colorCat(e.categoria)}"></span>
           <span class="h">${e.hora || 'TODO EL DÍA'}</span>
           <span class="t">${esc(e.titulo)}</span></button>`).join('')
       : `<div class="dia-vacio">Sin eventos</div>`}
@@ -1803,6 +1803,8 @@ function renderInicio(){
     detalle = partes.join(' · ');
     // Si lo siguiente es hoy y tiene hora, eso manda
     if(hoyMismo){ frase = proximo.titulo; marca = `${cuantoFalta()} · ${proximo.hora}`; objetivo = proximo; }
+    // Si solo hay una cosa pendiente, que el toque lleve directo a ella, no al listado genérico
+    else if(reclaman === 1){ objetivo = pendienteHoy[0] || vencido[0]; }
   } else {
     const sig = proximo || semana[0];
     if(sig){
