@@ -214,12 +214,12 @@ main{padding:6px 18px 30px}
 .cal-d.hoy{background:var(--pine);color:#fff;font-weight:700}
 .cal-d.sel{box-shadow:inset 0 0 0 2px var(--ink)}
 .cal-d.hoy.sel{box-shadow:inset 0 0 0 2px var(--ink)}
-.cal-d .barras{display:flex;flex-direction:column;gap:1px;width:100%;height:13px;
-  padding:0 4px;box-sizing:border-box;overflow:hidden;flex:none}
-.cal-d .barras b{display:block;height:3px;min-height:3px;flex:none;border-radius:2px;position:relative}
-.cal-d .barras b em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+.cal-d .ev-barras{display:flex;flex-direction:column;gap:1px;width:100%;height:13px;
+  padding:0 4px;box-sizing:border-box;overflow:hidden;flex:none;margin:0}
+.cal-d .ev-barras b{display:block;height:3px;min-height:3px;flex:none;border-radius:2px;position:relative}
+.cal-d .ev-barras b em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-style:normal;font-size:6px;font-weight:700;color:rgba(255,255,255,.95);line-height:1}
-.cal-d.out .barras{opacity:0}
+.cal-d.out .ev-barras{opacity:0}
 
 /* Hechas */
 .done-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 2px;
@@ -972,7 +972,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...extra];
 }
 
-const VERSION_APP = 'v30';
+const VERSION_APP = 'v31';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1540,13 +1540,13 @@ function vistaMes(){
     const f = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const cls = [f===hoyISO()?'hoy':'', f===calSel?'sel':''].filter(Boolean).join(' ');
     const evsDia = conEv[f] || [];
-    const barras = evsDia.slice(0,4).map((e,i) => {
+    const evBarras = evsDia.slice(0,4).map((e,i) => {
       const resto = evsDia.length - 4;
       const em = (i===3 && resto>0) ? `<em>+${resto}</em>` : '';
       return `<b style="background:${colorCat(e.categoria)}">${em}</b>`;
     }).join('');
     celdas += `<button class="cal-d ${cls}" data-dia="${f}">${d}
-      <span class="barras">${barras}</span></button>`;
+      <span class="ev-barras">${evBarras}</span></button>`;
   }
 
   const dia = new Date(calSel+'T00:00:00');
