@@ -418,6 +418,18 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 
 /* ---------- Inicio ---------- */
 .hoy-cab{margin:2px 0 20px}
+.fij-tile{touch-action:pan-y}
+.fij-tile.arrastrando{opacity:.85;box-shadow:0 10px 22px rgba(0,0,0,.2);z-index:5;transition:none;cursor:grabbing}
+.acceso-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:22px 8px;font-size:26px;text-align:center}
+.acceso-tile .acc-et{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.04em;
+  color:var(--muted);text-transform:uppercase}
+.ayuda-cat{font-size:13px;color:var(--muted);margin:2px 0 14px}
+.fila-cat{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.fila-cat .cat-color{flex:none;width:32px;height:32px;border:none;border-radius:8px;padding:0;background:none}
+.fila-cat .cat-icono{flex:none;width:36px;height:36px;text-align:center;font-size:18px;
+  border:1px solid var(--line);border-radius:8px;padding:0}
+.fila-cat .cat-nombre{flex:1;min-width:0;font-size:14.5px}
 .hoy-fecha{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;
   letter-spacing:-.03em;line-height:1.05}
 .hoy-sub{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.12em;
@@ -949,6 +961,11 @@ let calMes = new Date().getMonth(), calAnio = new Date().getFullYear(), calSel =
 const CATEGORIAS_BASE = ['Sin categoría','Casa','Marines','Coche','Familia','Salud','Trabajo',
   'Trámites','Finanzas','Compras','Ocio','Películas','Recetas','Documentos','Medidas','Personal'];
 
+// Lo que edite el usuario desde "Categorías": colores/iconos propios y categorías nuevas.
+// colores e iconos van con la clave en minúsculas para no depender de mayúsculas.
+let catPersonal = {colores:{}, iconos:{}, extra:[]};
+async function persistirCat(){ await Store.save('categorias:v1', catPersonal); }
+
 // Un campo abierto: eliges de la lista o escribes una nueva
 function campoCategoria(id, valor){
   return `<div class="field"><label>Categoría</label>
@@ -968,11 +985,11 @@ function categorias(){
   const usadas = new Set();
   [...tareas, ...eventos, ...fichas].forEach(x => { if(x.categoria) usadas.add(x.categoria); });
   notas.forEach(n => { if(n.categoria) usadas.add(n.categoria); else if(n.etiqueta) usadas.add(n.etiqueta); });
-  const extra = [...usadas].filter(c => c && c !== 'Sin categoría' && !CATEGORIAS_BASE.includes(c)).sort();
-  return [...CATEGORIAS_BASE, ...extra];
+  const extra = [...usadas, ...catPersonal.extra].filter(c => c && c !== 'Sin categoría' && !CATEGORIAS_BASE.includes(c));
+  return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v32';
+const VERSION_APP = 'v37';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1058,11 +1075,27 @@ const COLOR_CAT = {
 // Las categorías que añadas tú reciben un color estable, sacado de su nombre
 function colorCat(c){
   const k = (c||'').toLowerCase();
+  if(catPersonal.colores[k]) return catPersonal.colores[k];
   if(COLOR_CAT[k]) return COLOR_CAT[k];
   if(!k || k === 'sin categoría') return '#6E7B74';
   let h = 0;
   for(const ch of k) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return `hsl(${h} 34% 42%)`;
+}
+// Para el selector de color (input type=color), que solo admite formato #rrggbb
+function hexColorCat(c){
+  const v = colorCat(c);
+  if(v.startsWith('#')) return v;
+  const m = v.match(/hsl\((\d+) (\d+)% (\d+)%\)/);
+  if(!m) return '#6E7B74';
+  const [h,s,l] = [+m[1], +m[2]/100, +m[3]/100];
+  const a = s * Math.min(l, 1-l);
+  const f = n => {
+    const k2 = (n + h/30) % 12;
+    const col = l - a * Math.max(Math.min(k2-3, 9-k2, 1), -1);
+    return Math.round(255*col).toString(16).padStart(2,'0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 // Días visibles según el modo
@@ -1888,14 +1921,34 @@ function renderInicio(){
   }
 
   // ---- Lo que has anclado tú: todo como tarjeta, igual que en Notas ----
-  if(anclado.length){
+  if(anclado.length || ACCESOS_INICIO.length){
+    const itemsAcceso = ACCESOS_INICIO.map(a => ({tipo:'acceso', key:'acc:'+a.id, o:a}));
+    const itemsAnclado = anclado.map(({t, o}) => ({tipo:t, key:t+':'+o.id, o}));
+    let fijados = [...itemsAcceso, ...itemsAnclado];
+    const orden = ordenFijadoGuardado();
+    if(orden.length){
+      fijados = fijados.map((it, i) => ({it, i}))
+        .sort((a, b) => {
+          let ia = orden.indexOf(a.it.key); if(ia < 0) ia = 999 + a.i;
+          let ib = orden.indexOf(b.it.key); if(ib < 0) ib = 999 + b.i;
+          return ia - ib;
+        }).map(x => x.it);
+    }
+
     html += `<div class="sub-rot">Fijado · ${anclado.length}</div><div class="notas">`;
 
-    html += anclado.map(({t, o}) => {
+    html += fijados.map(({tipo, key, o}) => {
+      if(tipo === 'acceso'){
+        const abre = o.href ? `data-href="${esc(o.href)}"` : `data-accion="${o.id}"`;
+        return `<div class="nota fij-tile acceso-tile" data-key="${key}" ${abre}>
+          <span class="acc-ico">${o.icono}</span><span class="acc-et">${esc(o.titulo)}</span>
+        </div>`;
+      }
+      const t = tipo;
       if(t === 'nota' && o.tipo === 'lista'){
         const falta = (o.items||[]).filter(i => !i.hecho);
         const esCompra = norm(o.categoria||'') === 'compras' || /compra|super|mercado/i.test(o.titulo||'');
-        return `<div class="nota" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
+        return `<div class="nota fij-tile" data-key="${key}" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
           <div class="n-tit">${esc(o.titulo || 'Lista')}</div>
           <div class="n-lista">${falta.slice(0,5).map(i =>
             `<div class="n-li"><i></i><span>${esc(i.txt)}</span></div>`).join('')}
@@ -1904,13 +1957,13 @@ function renderInicio(){
         </div>`;
       }
       if(t === 'nota'){
-        return `<div class="nota" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
+        return `<div class="nota fij-tile" data-key="${key}" data-abrir-no="${o.id}" style="background:${colorNota(o.color)}">
           ${o.titulo?`<div class="n-tit">${esc(o.titulo)}</div>`:''}
           <div class="n-txt">${limpiar(o.contenido||'')}</div>
         </div>`;
       }
       if(t === 'tarea'){
-        return `<div class="nota" data-abrir-ta="${o.id}">
+        return `<div class="nota fij-tile" data-key="${key}" data-abrir-ta="${o.id}">
           <div class="n-tit" style="display:flex;align-items:flex-start;gap:8px">
             <span class="p-check" style="margin-top:2px"></span>${esc(o.titulo)}</div>
           ${o.notas ? `<div class="n-txt">${esc(o.notas)}</div>` : ''}
@@ -1922,14 +1975,14 @@ function renderInicio(){
       }
       if(t === 'evento'){
         const f = new Date(fechaEfectiva(o)+'T00:00:00');
-        return `<div class="nota" data-abrir-ev="${o.id}">
+        return `<div class="nota fij-tile" data-key="${key}" data-abrir-ev="${o.id}">
           <div class="n-tit">${esc(o.titulo)}</div>
           <div class="n-txt">${f.getDate()} ${MESES[f.getMonth()]}${o.lugar?' · '+esc(o.lugar):''}</div>
           <div class="n-pie"><span class="n-fec">${dias(fechaEfectiva(o))<0?'pasado':'próximo'}</span></div>
         </div>`;
       }
       const camp = (o.campos||[]).slice(0,2);
-      return `<div class="nota" data-abrir-fi="${o.id}">
+      return `<div class="nota fij-tile" data-key="${key}" data-abrir-fi="${o.id}">
         <div class="n-tit">${iconoCat(o.categoria)} ${esc(o.titulo)}</div>
         ${camp.length?`<div class="n-txt">${camp.map(c=>esc(c.k+': '+c.v)).join('\\n')}</div>`:''}
         <div class="n-pie"><span class="n-eti">${esc(o.categoria||'')}</span></div>
@@ -1956,6 +2009,10 @@ function renderInicio(){
   el.querySelectorAll('[data-abrir-fi]').forEach(b => b.onclick = () => {
     irA('datos'); fichasAbiertas.add(b.dataset.abrirFi); destacar(b.dataset.abrirFi); render();
   });
+  el.querySelectorAll('[data-href]').forEach(b => b.onclick = () => window.open(b.dataset.href, '_blank'));
+  el.querySelectorAll('[data-accion="categorias"]').forEach(b => b.onclick = () => sheetCategorias());
+  el.querySelectorAll('[data-accion="jnotes"]').forEach(b => b.onclick = () => aviso('Falta el enlace exacto de Jnotes'));
+  activarArrastreFijados();
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
   if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
@@ -1965,6 +2022,64 @@ function renderInicio(){
   if(marca) relojInicio = setInterval(() => { if(vista === 'inicio') renderInicio(); }, 30000);
 }
 let relojInicio = null;
+
+// Arrastrar y soltar para reordenar los tiles de Fijado (accesos + anclados mezclados).
+// Pulsación larga (380ms) activa el arrastre, para no chocar con el toque normal ni con el scroll.
+function activarArrastreFijados(){
+  const cont = document.querySelector('#view-inicio .notas');
+  if(!cont) return;
+  let tile = null, startX = 0, startY = 0, timer = null, arrastrando = false, suprimirClick = false;
+  const tiles = () => [...cont.querySelectorAll(':scope > .fij-tile')];
+
+  tiles().forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      tile = el; startX = e.clientX; startY = e.clientY;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if(!tile) return;
+        arrastrando = true;
+        try{ tile.setPointerCapture(e.pointerId); }catch(err){}
+        tile.classList.add('arrastrando');
+      }, 380);
+    });
+    el.addEventListener('pointermove', e => {
+      if(!tile) return;
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      if(!arrastrando){
+        if(Math.abs(dx) > 8 || Math.abs(dy) > 8){ clearTimeout(timer); tile = null; }
+        return;
+      }
+      e.preventDefault();
+      tile.style.transform = `translate(${dx}px,${dy}px)`;
+      tiles().forEach(other => {
+        if(other === tile) return;
+        const r = other.getBoundingClientRect();
+        if(e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom){
+          const ts = tiles();
+          if(ts.indexOf(tile) < ts.indexOf(other)) cont.insertBefore(tile, other.nextSibling);
+          else cont.insertBefore(tile, other);
+          startX = e.clientX; startY = e.clientY;
+          tile.style.transform = 'translate(0,0)';
+        }
+      });
+    });
+    const soltar = () => {
+      clearTimeout(timer);
+      if(arrastrando && tile){
+        tile.classList.remove('arrastrando');
+        tile.style.transform = '';
+        guardarOrdenFijado(tiles().map(t => t.dataset.key));
+        suprimirClick = true;
+        setTimeout(() => { suprimirClick = false; }, 60);
+      }
+      arrastrando = false; tile = null;
+    };
+    el.addEventListener('pointerup', soltar);
+    el.addEventListener('pointercancel', soltar);
+    el.addEventListener('click', e => { if(suprimirClick){ e.stopPropagation(); e.preventDefault(); } }, true);
+  });
+}
 
 /* ============================================================
    NOTAS
@@ -2427,6 +2542,53 @@ function checkClick(id){
   c.onclick = () => c.setAttribute('aria-pressed', c.getAttribute('aria-pressed')==='true' ? 'false' : 'true');
 }
 
+/* ---------- Categorías ---------- */
+function sheetCategorias(){
+  const lista = categorias().filter(c => c !== 'Sin categoría');
+  abrirSheet(`<div class="grip"></div>
+    <h2>Categorías</h2>
+    <p class="ayuda-cat">Toca el color o el icono para cambiarlos. Se guardan en este dispositivo.</p>
+    <div id="lista-cats">${lista.map(filaCategoriaEditor).join('')}</div>
+    <div class="field" style="margin-top:16px"><label>Categoría nueva</label>
+      <input id="f-nueva-cat" placeholder="Nombre de la categoría"></div>
+    <button class="btn-save" id="x-add-cat" style="margin-top:10px">+ Añadir categoría</button>`);
+  enlazarEditorCategorias();
+}
+function filaCategoriaEditor(c){
+  const k = c.toLowerCase();
+  return `<div class="fila-cat" data-k="${esc(k)}">
+    <input type="color" class="cat-color" value="${hexColorCat(c)}">
+    <input class="cat-icono" maxlength="4" value="${iconoCat(c)}">
+    <span class="cat-nombre">${esc(c)}</span>
+  </div>`;
+}
+function enlazarEditorCategorias(){
+  document.querySelectorAll('#lista-cats .fila-cat').forEach(fila => {
+    const k = fila.dataset.k;
+    fila.querySelector('.cat-color').addEventListener('input', e => {
+      catPersonal.colores[k] = e.target.value; persistirCat();
+    });
+    fila.querySelector('.cat-icono').addEventListener('change', e => {
+      const v = e.target.value.trim();
+      if(v) catPersonal.iconos[k] = v; else delete catPersonal.iconos[k];
+      persistirCat();
+    });
+  });
+  const btn = document.getElementById('x-add-cat');
+  if(btn) btn.onclick = () => {
+    const i = document.getElementById('f-nueva-cat');
+    const nombre = i.value.trim();
+    if(!nombre) return;
+    if(categorias().some(c => c.toLowerCase() === nombre.toLowerCase())){
+      aviso('Esa categoría ya existe'); return;
+    }
+    catPersonal.extra.push(nombre);
+    persistirCat();
+    sheetCategorias();
+  };
+}
+
+
 /* ---------- Tarea ---------- */
 function sheetTarea(id){
   const t = tareas.find(x => x.id === id); if(!t) return;
@@ -2593,7 +2755,27 @@ async function borrarEvento(){
 const ICONOS = {'Sin categoría':'📋', Casa:'🏠', Marines:'🧱', Coche:'🚗', Familia:'👪',
   Salud:'🩺', Trabajo:'🔧', 'Trámites':'📄', Finanzas:'🏦', Compras:'🛒', Ocio:'🎬',
   'Películas':'🎬', Recetas:'🍳', Documentos:'📄', Medidas:'📐', Personal:'👤'};
-const iconoCat = c => ICONOS[c] || '📌';
+const ICONOS_LC = Object.fromEntries(Object.entries(ICONOS).map(([k,v]) => [k.toLowerCase(), v]));
+const iconoCat = c => {
+  const k = (c||'').toLowerCase();
+  return catPersonal.iconos[k] || ICONOS_LC[k] || '📌';
+};
+
+const ACCESOS_INICIO = [
+  {id:'gmail', icono:'📧', titulo:'Gmail', href:'https://mail.google.com/'},
+  {id:'calendar', icono:'📅', titulo:'Calendar', href:'https://calendar.google.com/'},
+  {id:'drive', icono:'📁', titulo:'Drive', href:'https://drive.google.com/'},
+  {id:'whatsapp', icono:'💬', titulo:'WhatsApp', href:'whatsapp://'},
+  {id:'jnotes', icono:'📝', titulo:'Jnotes', href:'android-app://com.jideos.jnotes.overseas.google'},
+  {id:'categorias', icono:'🏷️', titulo:'Categorías', href:null}
+];
+function ordenFijadoGuardado(){
+  try{ return JSON.parse(localStorage.getItem('ordenFijado')||'[]'); }catch(e){ return []; }
+}
+function guardarOrdenFijado(arr){
+  try{ localStorage.setItem('ordenFijado', JSON.stringify(arr)); }catch(e){}
+}
+
 let fichasAbiertas = new Set();
 
 function chipsDatos(){
@@ -5311,6 +5493,8 @@ function recibirCompartido(){
   ultimaCopia = await Store.load('copia:v1');
   ultimaEdicion = await Store.load('ultimaEdicion:v1');
   papelera = (await Store.load('papelera:v1')) || [];
+  const cp = await Store.load('categorias:v1');
+  if(cp) catPersonal = {colores: cp.colores||{}, iconos: cp.iconos||{}, extra: cp.extra||[]};
   Store.pedirPermanencia();
   calSel = hoyISO();
   ajustarHueco();
