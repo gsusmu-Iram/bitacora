@@ -989,7 +989,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v37';
+const VERSION_APP = 'v38';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1924,7 +1924,7 @@ function renderInicio(){
   if(anclado.length || ACCESOS_INICIO.length){
     const itemsAcceso = ACCESOS_INICIO.map(a => ({tipo:'acceso', key:'acc:'+a.id, o:a}));
     const itemsAnclado = anclado.map(({t, o}) => ({tipo:t, key:t+':'+o.id, o}));
-    let fijados = [...itemsAcceso, ...itemsAnclado];
+    let fijados = [...itemsAnclado, ...itemsAcceso];
     const orden = ordenFijadoGuardado();
     if(orden.length){
       fijados = fijados.map((it, i) => ({it, i}))
