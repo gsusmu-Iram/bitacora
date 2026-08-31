@@ -22,7 +22,7 @@
   --r:14px; --nav-h:64px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
+html{height:100%;overflow-anchor:none}
 body{min-height:100%}
 body{background:var(--paper);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif;
   font-size:15px;line-height:1.45;padding-bottom:calc(var(--nav-h) + 58px + env(safe-area-inset-bottom));}
@@ -100,13 +100,16 @@ button{background:none;border:none;cursor:pointer}
   border-radius:50%;background:var(--oxblood)}
 
 /* Día seleccionado bajo el mes */
-.dia-sel{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
-.dia-sel .cab{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.dia-sel{margin-top:16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);padding:14px 14px 6px}
+.dia-sel .cab{font-family:"Bricolage Grotesque",sans-serif;font-size:15px;font-weight:700;
+  letter-spacing:0;text-transform:none;color:var(--ink);margin-bottom:2px}
 .dia-vacio{font-size:13.5px;color:var(--muted);font-style:italic;margin-bottom:9px}
 .add-dia{width:100%;padding:11px;border:1px dashed var(--line);border-radius:10px;
   color:var(--pine);font-weight:600;font-size:13.5px;display:flex;align-items:center;justify-content:center;gap:7px}
-.mini-ev{display:flex;align-items:center;gap:12px;padding:9px 4px;width:100%;text-align:left}
+.mini-ev{display:flex;align-items:center;gap:12px;padding:10px 4px;width:100%;text-align:left;
+  border-bottom:1px solid var(--line)}
+.mini-ev:last-of-type{border-bottom:none}
 .mini-ev .marca{flex:none;width:4px;height:30px;border-radius:99px}
 .mini-ev .h{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--muted);flex:none}
 .mini-ev .t{flex:1;min-width:0;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -199,6 +202,26 @@ main{padding:6px 18px 30px}
 /* Mini calendario */
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:12px 12px 8px;margin-bottom:22px}
+
+/* Modo mes a pantalla completa: sin aviso de guardado, sin tarjeta, celdas más altas */
+body.mes-full .store-state{display:none}
+body.mes-full .cal{background:none;border:none;box-shadow:none;padding:0;margin-bottom:10px}
+body.mes-full .cal-d{aspect-ratio:.8}
+
+/* Vista Año: los 12 meses de un vistazo */
+.anio-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+@media (min-width:640px){.anio-grid{grid-template-columns:repeat(3,1fr)}}
+.mini-mes{border:1px solid var(--line);border-radius:10px;padding:8px}
+.mini-mes-tit{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:12.5px;
+  text-align:center;margin-bottom:6px}
+.mini-mes-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.mini-mes-grid span,.mini-mes-grid button{aspect-ratio:1;display:flex;align-items:center;
+  justify-content:center;font-size:9.5px;border-radius:4px;position:relative;color:var(--ink)}
+.mini-mes-grid span.out{visibility:hidden}
+.mini-mes-grid button.hoy{background:var(--pine);color:#fff;font-weight:700}
+.mini-mes-grid button.con-ev::after{content:'';position:absolute;bottom:1px;width:3px;height:3px;
+  border-radius:50%;background:var(--pine)}
+.mini-mes-grid button.con-ev.hoy::after{background:#fff}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-mes{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:16px;letter-spacing:-.01em}
 .cal-nav{display:flex;gap:2px}
@@ -748,12 +771,12 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 
 
 /* ---------- Inicio: alarma y filas compactas ---------- */
-.alarma{display:flex;align-items:flex-start;gap:13px;background:var(--surface);
-  border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+.alarma{display:flex;align-items:flex-start;gap:13px;background:#FFFBF2;
+  border:1px solid rgba(176,128,42,.3);border-radius:16px;box-shadow:var(--shadow);
   padding:15px 16px;margin-bottom:18px;width:100%;text-align:left}
-.alarma.suena{border-color:rgba(142,47,38,.4);background:#FFFAF9}
 .alarma .campana{flex:none;width:40px;height:40px;border-radius:12px;display:grid;
-  place-items:center;background:var(--paper);font-size:19px}
+  place-items:center;background:rgba(176,128,42,.12);font-size:19px}
+.alarma.suena{border-color:rgba(142,47,38,.4);background:#FFFAF9}
 .alarma.suena .campana{background:rgba(142,47,38,.1)}
 .alarma .txt{flex:1;min-width:0}
 .alarma .txt b{display:block;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;
@@ -801,8 +824,15 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 <header class="top" id="top">
   <div class="top-row">
     <div class="brand" id="brand"><span class="rosa">🧭</span> Tareas</div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:7px">
       <div class="tally" id="tally"></div>
+      <button id="gastosBtn" aria-label="Gastos"
+        style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface)">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--ink);stroke-width:1.8;fill:none">
+          <circle cx="12" cy="12" r="8"/>
+          <path d="M14.3 9.3a3 3 0 1 0 0 5.4M8.7 11h4M8.7 13h4" stroke-linecap="round"/>
+        </svg>
+      </button>
       <button id="pegarBtn" aria-label="Pegar texto"
         style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface)">
         <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--ink);stroke-width:1.8;fill:none">
@@ -989,7 +1019,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v38';
+const VERSION_APP = 'v48';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1234,6 +1264,7 @@ function render(){
   ['inicio','tareas','eventos','notas','datos'].forEach(v =>
     document.getElementById('view-'+v).classList.toggle('on', vista===v));
   document.getElementById('chips').style.display = (vista==='eventos'||vista==='inicio') ? 'none' : '';
+  document.body.classList.toggle('mes-full', vista==='eventos' && modoE==='mes');
   document.getElementById('listaBtn').style.display = vista==='notas' ? 'grid' : 'none';
   if(vista==='tareas') renderTareas();
   else if(vista==='eventos') renderEventos();
@@ -1459,17 +1490,43 @@ const HH = 52;   // alto de cada hora
 function franjaHoraria(){ return {h0:7, h1:23}; }
 
 function calHead(){
-  const tabs = [['mes','Mes'],['tres','3 días'],['dia','1 día'],['gastos','Gastos']];
+  const tabs = [['mes','Mes'],['tres','3 días'],['dia','1 día'],['anio','Año']];
   return `<div class="cal-head">
       <div class="cal-nav"><button data-mes="-1" aria-label="Anterior">
         <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-      <div class="cal-mes">${modoE==='gastos' ? calAnio : MESES_L[calMes] + ' ' + calAnio}</div>
+      <div class="cal-mes">${(modoE==='gastos'||modoE==='anio') ? calAnio : MESES_L[calMes] + ' ' + calAnio}</div>
       <div class="cal-nav"><button data-mes="1" aria-label="Siguiente">
         <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     </div>
     <div class="cal-tabs" style="grid-template-columns:repeat(4,1fr)">${tabs.map(([k,l])=>
       `<button class="cal-tab" data-me="${k}" aria-pressed="${modoE===k}">${l}</button>`).join('')}</div>`;
 }
+
+/* ---------- Año: los 12 meses de un vistazo ---------- */
+function diaTieneEvento(f){
+  return eventos.some(e => abarca(e, f));
+}
+function miniMes(mes){
+  const primerDia = new Date(calAnio, mes, 1).getDay();
+  const ini = primerDia === 0 ? 6 : primerDia - 1;
+  const dias = new Date(calAnio, mes+1, 0).getDate();
+  const hoy = hoyISO();
+  let celdas = '';
+  for(let i = 0; i < ini; i++) celdas += `<span class="out"></span>`;
+  for(let d = 1; d <= dias; d++){
+    const f = `${calAnio}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = [f===hoy?'hoy':'', diaTieneEvento(f)?'con-ev':''].filter(Boolean).join(' ');
+    celdas += `<button class="${cls}" data-anio-dia="${f}">${d}</button>`;
+  }
+  return `<div class="mini-mes" data-anio-mes="${mes}">
+    <div class="mini-mes-tit">${MESES_L[mes]}</div>
+    <div class="mini-mes-grid">${celdas}</div>
+  </div>`;
+}
+function vistaAnio(){
+  return `<div class="anio-grid">${MESES_L.map((_,m) => miniMes(m)).join('')}</div>`;
+}
+
 
 /* ---------- Gastos: los eventos con coste, mirados de otra forma ---------- */
 const PALETA = ['#2C5F4A','#B0802A','#2F6F8F','#8E2F26','#8A5FA8','#C2743F','#5C7A6E','#7A6A9E'];
@@ -1664,6 +1721,12 @@ function renderEventos(){
     enlazarE();
     return;
   }
+  if(modoE === 'anio'){
+    document.getElementById('view-eventos').innerHTML =
+      `<div class="cal">${calHead()}${vistaAnio()}</div>`;
+    enlazarE();
+    return;
+  }
 
   let html = `<div class="cal">${calHead()}${modoE==='mes' ? vistaMes() : vistaRejilla()}${leyenda()}</div>`;
   html += `<div class="rotulo">Eventos de ${MESES_L[calMes].toLowerCase()}</div>`;
@@ -1695,7 +1758,17 @@ function enlazarE(){
     if(modoE !== 'mes'){ const d = new Date(calSel+'T00:00:00'); calMes = d.getMonth(); calAnio = d.getFullYear(); }
     render();
   });
-  el.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { calSel = b.dataset.dia; render(); });
+  el.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => {
+    calSel = b.dataset.dia; render();
+    setTimeout(() => {
+      const det = document.querySelector('.dia-sel');
+      if(det) det.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 0);
+  });
+  el.querySelectorAll('[data-anio-dia]').forEach(b => b.onclick = () => {
+    const f = b.dataset.anioDia;
+    calSel = f; calMes = Number(f.slice(5,7)) - 1; modoE = 'mes'; render();
+  });
   el.querySelectorAll('[data-mesgasto]').forEach(b => b.onclick = () => { calMes = Number(b.dataset.mesgasto); render(); });
   el.querySelectorAll('[data-adddia]').forEach(b => b.onclick = () => {
     const t = prompt('Nuevo evento:');
@@ -1710,7 +1783,7 @@ function enlazarE(){
   }
   el.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => {
     const paso = Number(b.dataset.mes);
-    if(modoE === 'gastos'){ calAnio += paso; render(); return; }
+    if(modoE === 'gastos' || modoE === 'anio'){ calAnio += paso; render(); return; }
     if(modoE === 'mes'){
       calMes += paso;
       if(calMes < 0){ calMes = 11; calAnio--; } if(calMes > 11){ calMes = 0; calAnio++; }
@@ -1744,7 +1817,8 @@ function irA(v){
   document.querySelectorAll('.nav-btn').forEach(x => x.removeAttribute('aria-current'));
   const b = document.querySelector(`.nav-btn[data-view="${v}"]`);
   if(b) b.setAttribute('aria-current','page');
-  window.scrollTo(0,0); render();
+  render();
+  requestAnimationFrame(() => window.scrollTo(0,0));
 }
 
 function renderInicio(){
@@ -5441,6 +5515,7 @@ document.getElementById('nav').addEventListener('click', e => {
   b.setAttribute('aria-current','page');
   window.scrollTo(0,0); render();
 });
+document.getElementById('gastosBtn').onclick = () => { modoE = 'gastos'; irA('eventos'); };
 document.getElementById('pegarBtn').onclick = () => abrirPegar();
 document.getElementById('menuBtn').onclick = menuCopias;
 document.getElementById('scrim').onclick = cerrarSheet;
