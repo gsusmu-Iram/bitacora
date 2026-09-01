@@ -293,13 +293,37 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 /* Panel */
 .scrim{position:fixed;inset:0;z-index:50;background:rgba(22,34,29,.42);opacity:0;pointer-events:none;transition:opacity .2s}
 .scrim.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:var(--surface);
-  border-radius:22px 22px 0 0;padding:8px 20px calc(24px + env(safe-area-inset-bottom));
-  transform:translateY(102%);transition:transform .26s cubic-bezier(.32,.72,0,1);max-height:88vh;overflow-y:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;top:0;z-index:51;background:var(--surface);
+  border-radius:0;padding:calc(8px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  transform:translateY(102%);transition:transform .26s cubic-bezier(.32,.72,0,1);overflow-y:auto}
 .sheet.on{transform:translateY(0)}
 .grip{width:36px;height:4px;border-radius:99px;background:var(--line);margin:6px auto 16px}
 .sheet h2{font-family:"Bricolage Grotesque",sans-serif;font-size:11px;font-weight:700;
   letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+/* Panel en filas: etiqueta a la izquierda, valor a la derecha */
+.rot-sheet{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.tit-grande{width:100%;font-size:15px;font-weight:500;color:var(--ink);background:var(--paper);
+  border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:16px;
+  line-height:1.4;resize:none;overflow:hidden;font-family:inherit}
+.filas{border-top:1px solid var(--line)}
+.fila{display:flex;align-items:center;gap:10px;padding:5px 2px;border-bottom:1px solid var(--line);
+  width:100%;text-align:left;background:none;min-height:46px}
+.fila .et{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:9px;flex:none}
+.fila .et svg{width:17px;height:17px;stroke:var(--muted);stroke-width:1.7;fill:none;flex:none}
+.fila input,.fila select,.fila textarea{flex:1;min-width:0;text-align:right;background:none;
+  border:none;padding:6px 0;font-size:14px;color:var(--ink);font-family:inherit;border-radius:0}
+.fila textarea{resize:none;overflow:hidden;line-height:1.4}
+.fila select{direction:rtl}
+.fila select option{direction:ltr}
+.fila input::placeholder,.fila textarea::placeholder{color:var(--pine);opacity:1}
+.fila .punto-cat{width:9px;height:9px;border-radius:50%;flex:none;margin-left:auto}
+.fila .punto-cat + input{flex:none;width:auto;max-width:60%}
+.fila .sw{width:40px;height:23px;border-radius:99px;background:var(--line);padding:2px;flex:none;
+  margin-left:auto;display:flex;align-items:center;transition:background .16s}
+.fila .sw i{width:19px;height:19px;border-radius:50%;background:#fff;display:block;transition:transform .16s}
+.fila[aria-pressed="true"] .sw{background:var(--pine)}
+.fila[aria-pressed="true"] .sw i{transform:translateX(17px)}
 .field{margin-bottom:15px}
 .field label{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;
   letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -1026,7 +1050,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v50';
+const VERSION_APP = 'v53';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -2594,12 +2618,25 @@ async function soltarArrastre(e){
 /* ============================================================
    PANELES
    ============================================================ */
+// A pantalla completa el panel tapa el fondo, así que la salida es la tecla atrás:
+// al abrir metemos una entrada en el historial y al cerrar la sacamos.
+let sheetEnHistorial = false;
 function abrirSheet(html){
   document.getElementById('sheet').innerHTML = html;
   document.getElementById('scrim').classList.add('on');
   document.getElementById('sheet').classList.add('on');
+  document.getElementById('sheet').scrollTop = 0;
+  const g = document.querySelector('#sheet .grip');
+  if(g){ g.style.cursor = 'pointer'; g.onclick = cerrarSheet; }
+  if(!sheetEnHistorial){ history.pushState({sheet:true}, ''); sheetEnHistorial = true; }
 }
 function cerrarSheet(){
+  const habia = sheetEnHistorial;
+  sheetEnHistorial = false;
+  ocultarSheet();
+  if(habia) history.back();
+}
+function ocultarSheet(){
   // Lo creado desde la barra solo cuenta si le das a Guardar
   if(editando){
     const t = tareas.find(x => x.id === editando), e = eventos.find(x => x.id === editando);
@@ -2611,6 +2648,9 @@ function cerrarSheet(){
   document.getElementById('scrim').classList.remove('on');
   document.getElementById('sheet').classList.remove('on');
 }
+window.addEventListener('popstate', () => {
+  if(sheetEnHistorial){ sheetEnHistorial = false; ocultarSheet(); }
+});
 function segClick(id){
   const s = document.getElementById(id); if(!s) return;
   s.querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -2621,6 +2661,35 @@ function segClick(id){
 function checkClick(id){
   const c = document.getElementById(id); if(!c) return;
   c.onclick = () => c.setAttribute('aria-pressed', c.getAttribute('aria-pressed')==='true' ? 'false' : 'true');
+}
+
+/* Filas compactas de los paneles: etiqueta a la izquierda, valor a la derecha */
+const svgIco = d => `<svg viewBox="0 0 24 24">${d}</svg>`;
+const ICO = {
+  cal: svgIco('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/>'),
+  tramo: svgIco('<path d="M4 12h16M4 12l3-3M4 12l3 3M20 12l-3-3M20 12l-3 3" stroke-linecap="round" stroke-linejoin="round"/>'),
+  rep: svgIco('<path d="M4 9h12l-3-3M20 15H8l3 3" stroke-linecap="round" stroke-linejoin="round"/>'),
+  tag: svgIco('<path d="M4 4h7l9 9-7 7-9-9V4z" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>'),
+  proy: svgIco('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke-linejoin="round"/>'),
+  lugar: svgIco('<path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.5"/>'),
+  euro: svgIco('<circle cx="12" cy="12" r="8"/><path d="M15 9.3a3.6 3.6 0 1 0 0 5.4M8.7 11h4.6M8.7 13h4.6" stroke-linecap="round"/>'),
+  tik: svgIco('<path d="M5 4h14v16l-2.3-1.6L14.4 20l-2.4-1.6L9.6 20l-2.3-1.6L5 20V4z" stroke-linejoin="round"/><path d="M9 9h6M9 13h4" stroke-linecap="round"/>'),
+  gar: svgIco('<path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6l7-3z" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>'),
+  nota: svgIco('<path d="M6 3h9l4 4v14H6V3z" stroke-linejoin="round"/><path d="M9 12h7M9 16h5" stroke-linecap="round"/>'),
+  brujula: svgIco('<circle cx="12" cy="12" r="8"/><path d="m15 9-2.2 4.8L8 16l2.2-4.8L15 9z" stroke-linejoin="round"/>'),
+  lock: svgIco('<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'),
+  pri: svgIco('<path d="M6 21V4M6 4h11l-2.5 4L17 12H6" stroke-linecap="round" stroke-linejoin="round"/>'),
+  ficha: svgIco('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5" stroke-linecap="round"/>')
+};
+function fila(ico, etiqueta, control){
+  return `<div class="fila"><span class="et">${ico}${etiqueta}</span>${control}</div>`;
+}
+// Un textarea que crece con el texto en lugar de mostrar barra de desplazamiento
+function autoAlto(id){
+  const t = document.getElementById(id); if(!t) return;
+  const ajusta = () => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+  t.addEventListener('input', ajusta);
+  requestAnimationFrame(ajusta);
 }
 
 /* ---------- Categorías ---------- */
@@ -2675,26 +2744,32 @@ function sheetTarea(id){
   const t = tareas.find(x => x.id === id); if(!t) return;
   editando = id; editTipo = 'tarea';
   abrirSheet(`<div class="grip"></div>
-    <h2>${t.parentId ? 'Subtarea' : 'Tarea'}</h2>
-    <div class="field"><label>Título</label><input id="f-tit" value="${esc(t.titulo)}"></div>
-    <div class="field"><label>Fecha límite</label><input id="f-fec" type="date" value="${t.fechaLimite||''}"></div>
-    <div class="field"><label>Prioridad</label><div class="seg" id="f-pri">
-      ${['Alta','Media','Baja'].map(p=>`<button data-p="${p}" aria-pressed="${t.prioridad===p}">${p}</button>`).join('')}</div></div>
-    ${campoCategoria('f-cat', t.categoria)}
-    ${campoProyecto(t.proyecto)}
-    <button class="check" id="x-inicio" aria-pressed="${t.enInicio?'true':'false'}"><i></i>
-      <span>🧭 Mostrar en Inicio</span></button>
-    <button class="check" id="x-priv" aria-pressed="${t.privado?'true':'false'}"><i></i>
-      <span>Privado · no salir en la exportación para IA</span></button>
-    ${t.imagen?`<div class="field"><label>Comprobante</label>
+    <div class="rot-sheet">${t.parentId ? 'Subtarea' : 'Tarea'}</div>
+    <textarea id="f-tit" class="tit-grande" rows="1">${esc(t.titulo)}</textarea>
+    <div class="filas">
+      ${fila(ICO.cal, 'Fecha límite', `<input id="f-fec" type="date" value="${t.fechaLimite||''}">`)}
+      ${fila(ICO.pri, 'Prioridad', `<select id="f-pri">
+        ${['Alta','Media','Baja'].map(p=>`<option value="${p}" ${t.prioridad===p?'selected':''}>${p}</option>`).join('')}</select>`)}
+      ${fila(ICO.tag, 'Categoría', `<span class="punto-cat" id="f-cat-punto" style="background:${colorCat(t.categoria)}"></span>
+        <input id="f-cat" list="listaCat" value="${esc(t.categoria && t.categoria!=='Sin categoría' ? t.categoria : '')}" placeholder="Sin categoría">
+        <datalist id="listaCat">${categorias().filter(c=>c!=='Sin categoría').map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`)}
+      ${fila(ICO.proy, 'Proyecto', `<input id="x-proy" list="listaProy" value="${esc(t.proyecto||'')}" placeholder="Sin proyecto">
+        <datalist id="listaProy">${proyectos().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`)}
+      <button class="fila" id="x-inicio" aria-pressed="${t.enInicio?'true':'false'}">
+        <span class="et">${ICO.brujula}Mostrar en Inicio</span><span class="sw"><i></i></span></button>
+      <button class="fila" id="x-priv" aria-pressed="${t.privado?'true':'false'}">
+        <span class="et">${ICO.lock}Privado</span><span class="sw"><i></i></span></button>
+      ${fila(ICO.nota, 'Notas', `<textarea id="f-not" rows="1" placeholder="Añadir">${esc(t.notas||'')}</textarea>`)}
+    </div>
+    ${t.imagen?`<div class="field" style="margin-top:14px"><label>Comprobante</label>
       <div class="comprobante"><img src="${t.imagen}" alt="Comprobante">
       <button class="quitar" data-quitarimg="${t.id}">Quitar imagen</button></div></div>`:''}
-    <div class="field"><label>Notas</label><textarea id="f-not" placeholder="Detalles, medidas, referencias…">${esc(t.notas||'')}</textarea></div>
     <div class="sheet-actions"><button class="btn-save" id="f-save">Guardar</button><button class="btn-del" id="f-del">Borrar</button></div>`);
   checkClick('x-inicio');
   checkClick('x-priv');
-  enlazarQuitarProyecto();
-  segClick('f-pri');
+  autoAlto('f-tit'); autoAlto('f-not');
+  const tci = document.getElementById('f-cat'), tcp = document.getElementById('f-cat-punto');
+  if(tci && tcp) tci.oninput = () => { tcp.style.background = colorCat(tci.value.trim() || 'Sin categoría'); };
   const qit = document.querySelector('[data-quitarimg]');
   if(qit) qit.onclick = async () => { t.imagen = ''; await persistirT(); sheetTarea(id); };
   document.getElementById('f-save').onclick = guardarTarea;
@@ -2711,8 +2786,8 @@ async function guardarTarea(){
   t.proyecto = leerProyecto();
   t.privado = leerPrivado();
   t.enInicio = leerInicio();
-  const p = document.querySelector('#f-pri button[aria-pressed="true"]');
-  t.prioridad = p ? p.dataset.p : 'Media';
+  const p = document.getElementById('f-pri');
+  t.prioridad = p ? p.value : 'Media';
   const nuevo = t.borrador; delete t.borrador;
   const id = t.id; editando = null;
   cerrarSheet();
@@ -2735,42 +2810,40 @@ function sheetEvento(id){
   const e = eventos.find(x => x.id === id); if(!e) return;
   editando = id; editTipo = 'evento';
   abrirSheet(`<div class="grip"></div>
-    <h2>Evento</h2>
-    <div class="field"><label>Título</label><input id="e-tit" value="${esc(e.titulo)}"></div>
-    <div class="duo">
-      <div class="field"><label>Fecha</label><input id="e-fec" type="date" value="${e.fecha||''}"></div>
-      <div class="field"><label>Hora</label><input id="e-hora" type="time" value="${e.hora||''}"></div>
+    <div class="rot-sheet">Evento</div>
+    <textarea id="e-tit" class="tit-grande" rows="1">${esc(e.titulo)}</textarea>
+    <div class="filas">
+      ${fila(ICO.cal, 'Cuándo', `<input id="e-fec" type="date" value="${e.fecha||''}">
+        <input id="e-hora" type="time" value="${e.hora||''}" style="flex:none;width:78px">`)}
+      ${fila(ICO.tramo, 'Hasta', `<input id="e-fin" type="date" value="${e.fechaFin||''}">`)}
+      ${fila(ICO.rep, 'Repetición', `<select id="e-rep">
+        ${REPETICIONES.map(r=>`<option value="${r.k}" ${repDe(e)===r.k?'selected':''}>${r.l}</option>`).join('')}</select>`)}
+      ${fila(ICO.tag, 'Categoría', `<span class="punto-cat" id="e-cat-punto" style="background:${colorCat(e.categoria)}"></span>
+        <input id="e-cat" list="listaCat" value="${esc(e.categoria && e.categoria!=='Sin categoría' ? e.categoria : '')}" placeholder="Sin categoría">
+        <datalist id="listaCat">${categorias().filter(c=>c!=='Sin categoría').map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`)}
+      ${fila(ICO.proy, 'Proyecto', `<input id="x-proy" list="listaProy" value="${esc(e.proyecto||'')}" placeholder="Sin proyecto">
+        <datalist id="listaProy">${proyectos().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`)}
+      ${fila(ICO.lugar, 'Lugar', `<input id="e-lug" value="${esc(e.lugar||'')}" placeholder="Añadir">`)}
+      ${fila(ICO.euro, 'Coste', `<input id="e-cos" type="number" step="0.01" inputmode="decimal" value="${e.coste??''}" placeholder="Añadir">`)}
+      ${fila(ICO.tik, 'Ticket / ref.', `<input id="e-tik" value="${esc(e.ticket||'')}" placeholder="Añadir">`)}
+      ${fila(ICO.gar, 'Garantía', `<input id="e-gar" type="date" value="${e.garantia||''}">`)}
+      <button class="fila" id="x-inicio" aria-pressed="${e.enInicio?'true':'false'}">
+        <span class="et">${ICO.brujula}Mostrar en Inicio</span><span class="sw"><i></i></span></button>
+      <button class="fila" id="x-priv" aria-pressed="${e.privado?'true':'false'}">
+        <span class="et">${ICO.lock}Privado</span><span class="sw"><i></i></span></button>
+      ${fila(ICO.nota, 'Notas', `<textarea id="e-not" rows="1" placeholder="Añadir">${esc(e.notas||'')}</textarea>`)}
     </div>
-    <div class="field"><label>Hasta (si dura varios días)</label>
-      <input id="e-fin" type="date" value="${e.fechaFin||''}"></div>
-    <div class="field"><label>Repetición</label><select id="e-rep">
-      ${REPETICIONES.map(r=>`<option value="${r.k}" ${repDe(e)===r.k?'selected':''}>${r.l}</option>`).join('')}</select></div>
-    ${campoCategoria('e-cat', e.categoria)}
-    <div class="field"><label>Lugar</label><input id="e-lug" value="${esc(e.lugar||'')}" placeholder="Comercio, ciudad, dirección…"></div>
-    <div class="duo">
-      <div class="field"><label>Coste (€)</label><input id="e-cos" type="number" step="0.01" inputmode="decimal" value="${e.coste??''}"></div>
-      <div class="field"><label>Ticket / ref.</label><input id="e-tik" value="${esc(e.ticket||'')}"></div>
-    </div>
-    <div class="field"><label>Garantía hasta</label><input id="e-gar" type="date" value="${e.garantia||''}"></div>
-    <div class="field"><label>Estado</label><div class="seg" id="e-est">
-      ${['Confirmado','Cancelado'].map(s=>`<button data-p="${s}" aria-pressed="${(e.estado||'confirmado').toLowerCase()===s.toLowerCase()}">${s}</button>`).join('')}</div></div>
-    ${campoProyecto(e.proyecto)}
-    <button class="check" id="x-inicio" aria-pressed="${e.enInicio?'true':'false'}"><i></i>
-      <span>🧭 Mostrar en Inicio<br>
-      <span style="color:var(--muted);font-size:12px">Aunque su fecha haya pasado</span></span></button>
-    <button class="check" id="x-priv" aria-pressed="${e.privado?'true':'false'}"><i></i>
-      <span>Privado · no salir en la exportación para IA</span></button>
-    ${e.imagen?`<div class="field"><label>Comprobante</label>
+    ${e.imagen?`<div class="field" style="margin-top:14px"><label>Comprobante</label>
       <div class="comprobante"><img src="${e.imagen}" alt="Comprobante">
       <button class="quitar" data-quitarimg="${e.id}">Quitar imagen</button></div></div>`:''}
-    <div class="field"><label>Notas</label><textarea id="e-not">${esc(e.notas||'')}</textarea></div>
-    <button class="op" id="e-cal" style="margin-top:2px"><i>
+    <button class="op" id="e-cal" style="margin-top:14px"><i>
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg></i>
       <div><b>Añadir al calendario</b><span>Para que el móvil te avise</span></div></button>
     <div class="sheet-actions"><button class="btn-save" id="e-save">Guardar</button><button class="btn-del" id="e-del">Borrar</button></div>`);
   checkClick('x-priv'); checkClick('x-inicio');
-  enlazarQuitarProyecto();
-  segClick('e-est');
+  autoAlto('e-tit'); autoAlto('e-not');
+  const ci = document.getElementById('e-cat'), cp = document.getElementById('e-cat-punto');
+  if(ci && cp) ci.oninput = () => { cp.style.background = colorCat(ci.value.trim() || 'Sin categoría'); };
   const qi = document.querySelector('[data-quitarimg]');
   if(qi) qi.onclick = async () => { e.imagen = ''; await persistirE(); sheetEvento(id); };
   document.getElementById('e-cal').onclick = async () => { await guardarEvento(); menuCalendario(id); };
@@ -2808,8 +2881,6 @@ async function guardarEvento(){
   e.coste = c === '' ? null : Number(c);
   e.ticket = document.getElementById('e-tik').value.trim();
   e.garantia = document.getElementById('e-gar').value || '';
-  const s = document.querySelector('#e-est button[aria-pressed="true"]');
-  e.estado = s ? s.dataset.p.toLowerCase() : 'confirmado';
   e.notas = document.getElementById('e-not').value.trim();
   e.proyecto = leerProyecto();
   e.privado = leerPrivado();
@@ -2939,22 +3010,29 @@ function sheetFicha(id){
   const f = fichas.find(x => x.id === id); if(!f) return;
   editando = id; editTipo = 'ficha';
   abrirSheet(`<div class="grip"></div>
-    <h2>Ficha</h2>
-    <div class="field"><label>Título</label><input id="d-tit" value="${esc(f.titulo)}"></div>
-    ${campoCategoria('d-gru', f.categoria)}
-    <div class="field"><label>Datos</label><div id="d-campos"></div>
+    <div class="rot-sheet">Ficha</div>
+    <textarea id="d-tit" class="tit-grande" rows="1">${esc(f.titulo)}</textarea>
+    <div class="filas">
+      ${fila(ICO.tag, 'Categoría', `<span class="punto-cat" id="d-cat-punto" style="background:${colorCat(f.categoria)}"></span>
+        <input id="d-gru" list="listaCat" value="${esc(f.categoria && f.categoria!=='Sin categoría' ? f.categoria : '')}" placeholder="Sin categoría">
+        <datalist id="listaCat">${categorias().filter(c=>c!=='Sin categoría').map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`)}
+      ${fila(ICO.proy, 'Proyecto', `<input id="x-proy" list="listaProy" value="${esc(f.proyecto||'')}" placeholder="Sin proyecto">
+        <datalist id="listaProy">${proyectos().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`)}
+      <button class="fila" id="x-inicio" aria-pressed="${f.enInicio?'true':'false'}">
+        <span class="et">${ICO.brujula}Mostrar en Inicio</span><span class="sw"><i></i></span></button>
+      <button class="fila" id="x-priv" aria-pressed="${f.privado!==false?'true':'false'}">
+        <span class="et">${ICO.lock}Privado</span><span class="sw"><i></i></span></button>
+      ${fila(ICO.nota, 'Notas', `<textarea id="d-not" rows="1" placeholder="Añadir">${esc(f.notas||'')}</textarea>`)}
+    </div>
+    <div class="field" style="margin-top:16px"><label>Datos</label><div id="d-campos"></div>
       <button class="add-campo" id="d-nuevo"><b>+</b> Añadir dato</button></div>
-    ${campoProyecto(f.proyecto)}
-    <button class="check" id="x-inicio" aria-pressed="${f.enInicio?'true':'false'}"><i></i>
-      <span>🧭 Mostrar en Inicio</span></button>
-    <button class="check" id="x-priv" aria-pressed="${f.privado!==false?'true':'false'}"><i></i>
-      <span>Privado · no salir en la exportación para IA</span></button>
-    <div class="field"><label>Notas</label><textarea id="d-not">${esc(f.notas||'')}</textarea></div>
     <div class="sheet-actions"><button class="btn-save" id="d-save">Guardar</button>
       <button class="btn-del" id="d-del">Borrar</button></div>`);
   checkClick('x-inicio');
   checkClick('x-priv');
-  enlazarQuitarProyecto();
+  autoAlto('d-tit'); autoAlto('d-not');
+  const dci = document.getElementById('d-gru'), dcp = document.getElementById('d-cat-punto');
+  if(dci && dcp) dci.oninput = () => { dcp.style.background = colorCat(dci.value.trim() || 'Sin categoría'); };
   pintarCampos();
   document.getElementById('d-nuevo').onclick = () => {
     recogerCampos();
