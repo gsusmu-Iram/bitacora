@@ -203,10 +203,17 @@ main{padding:6px 18px 30px}
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:12px 12px 8px;margin-bottom:22px}
 
-/* Modo mes a pantalla completa: sin aviso de guardado, sin tarjeta, celdas más altas */
+/* Modo mes a pantalla completa: la rejilla se estira hasta llenar la pantalla.
+   --alto-fuera = lo que ocupan cabecera, pestañas, barra de añadir y navegación. */
+body.mes-full{--alto-fuera:288px}
 body.mes-full .store-state{display:none}
 body.mes-full .cal{background:none;border:none;box-shadow:none;padding:0;margin-bottom:10px}
-body.mes-full .cal-d{aspect-ratio:.8}
+body.mes-full .cal-grid{height:calc(100dvh - var(--alto-fuera));
+  grid-template-rows:auto;grid-auto-rows:1fr}
+body.mes-full .cal-d{aspect-ratio:auto;height:100%;min-height:0;font-size:16px;gap:5px}
+body.mes-full .cal-d .ev-barras{height:auto;gap:2px;padding:0 6px}
+body.mes-full .cal-d .ev-barras b{height:4px;min-height:4px;border-radius:3px}
+body.mes-full .cal-dow{font-size:11px;padding-bottom:7px}
 
 /* Vista Año: los 12 meses de un vistazo */
 .anio-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
@@ -1019,7 +1026,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v48';
+const VERSION_APP = 'v50';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
