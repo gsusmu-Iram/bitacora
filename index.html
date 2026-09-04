@@ -413,6 +413,24 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 
 /* ---------- Notas ---------- */
 .notas{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-items:start}
+#view-inicio .notas{grid-auto-rows:6px;grid-auto-flow:row dense}
+/* Miniatura del horario en Inicio */
+.pv-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:2px 0 3px}
+.pv-dow span{text-align:center;font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--muted)}
+.pv-dow span.hoy{color:var(--pine);font-weight:700}
+.pv-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.pv-c{height:9px;border-radius:2px;background:var(--paper)}
+.pv-c.hoy{outline:1px solid var(--line)}
+.pv-hoy{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.pv-li{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:1.25}
+.pv-li i{width:6px;height:6px;border-radius:50%;flex:none}
+.pv-li b{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted);font-weight:400}
+.pv-mes-tit{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin:2px 0 4px}
+.pv-mes{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.pv-mes .pv-d{aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-size:8.5px;border-radius:3px;color:var(--muted)}
+.pv-mes .pv-d.hoy{outline:1.5px solid var(--pine);outline-offset:-1px;font-weight:700}
 @media (min-width:640px){.notas{grid-template-columns:repeat(3,1fr)}}
 .nota{border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
   padding:11px 12px 10px;position:relative;text-align:left;width:100%;
@@ -857,11 +875,11 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 
 
 /* ---------- Inicio: alarma y filas compactas ---------- */
-.alarma{display:flex;align-items:flex-start;gap:13px;background:#FFFBF2;
-  border:1px solid rgba(176,128,42,.3);border-radius:16px;box-shadow:var(--shadow);
+.alarma{display:flex;align-items:flex-start;gap:13px;background:#FDF2E7;
+  border:1px solid rgba(169,84,31,.38);border-radius:16px;box-shadow:var(--shadow);
   padding:15px 16px;margin-bottom:18px;width:100%;text-align:left}
 .alarma .campana{flex:none;width:40px;height:40px;border-radius:12px;display:grid;
-  place-items:center;background:rgba(176,128,42,.12);font-size:19px}
+  place-items:center;background:rgba(169,84,31,.14);font-size:19px}
 .alarma.suena{border-color:rgba(142,47,38,.4);background:#FFFAF9}
 .alarma.suena .campana{background:rgba(142,47,38,.1)}
 .alarma .txt{flex:1;min-width:0}
@@ -870,7 +888,7 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 .alarma.suena .txt b{color:var(--oxblood)}
 .alarma .txt span{display:block;font-size:13px;color:var(--muted);line-height:1.4}
 .alarma .txt .cuenta{font-family:"JetBrains Mono",monospace;font-size:13px;
-  color:var(--gold);font-weight:600;letter-spacing:.02em;margin-bottom:1px}
+  color:#A9541F;font-weight:600;letter-spacing:.02em;margin-bottom:1px}
 .alarma.suena .txt .cuenta{color:var(--oxblood)}
 .alarma .flecha{flex:none;align-self:center;width:16px;height:16px;stroke:var(--muted);
   stroke-width:2;fill:none;opacity:.45}
@@ -1107,7 +1125,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v57';
+const VERSION_APP = 'v60';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1909,6 +1927,56 @@ function irA(v){
   requestAnimationFrame(() => window.scrollTo(0,0));
 }
 
+/* Miniatura de una tabla para verla en Inicio sin entrar */
+function miniPrevio(h){
+  if(h.tipo === 'semana'){
+    const d = diaSemanaHoy();
+    const filas = (h.franjas||[]).map(f => DIAS_H.map(([dd]) => {
+      const c = (h.celdas||{})[f.id+'|'+dd];
+      return `<span class="pv-c${dd===d?' hoy':''}" style="${c&&c.t?`background:${c.c}`:''}"></span>`;
+    }).join('')).join('');
+    const lista = (h.franjas||[])
+      .map(f => ({f, c:(h.celdas||{})[f.id+'|'+d]}))
+      .filter(x => x.c && x.c.t)
+      .sort((a,b) => a.f.ini.localeCompare(b.f.ini));
+    return `<div class="pv-dow">${DIAS_H.map(([dd,l]) =>
+        `<span class="${dd===d?'hoy':''}">${l}</span>`).join('')}</div>
+      <div class="pv-grid">${filas}</div>
+      ${lista.length ? `<div class="pv-hoy">${lista.map(({f,c}) =>
+        `<div class="pv-li"><i style="background:${c.c}"></i>
+         <b>${esc(f.ini)}</b> ${esc(c.t)}</div>`).join('')}</div>` : ''}`;
+  }
+  // Mensual y anual: el mes en curso, con los días pintados
+  const mes = h.tipo === 'mes' ? h.mes : new Date().getMonth();
+  const anio = h.tipo === 'mes' ? h.anio : new Date().getFullYear();
+  const pd = new Date(anio, mes, 1).getDay();
+  const ini = pd === 0 ? 6 : pd - 1;
+  const total = new Date(anio, mes+1, 0).getDate();
+  const hoyF = hoyISO();
+  let cel = '';
+  for(let i = 0; i < ini; i++) cel += `<span class="pv-d"></span>`;
+  for(let dd = 1; dd <= total; dd++){
+    const f = `${anio}-${String(mes+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+    const e = (h.etiquetas||[]).find(x => x.id === (h.dias||{})[f]);
+    cel += `<span class="pv-d${f===hoyF?' hoy':''}"
+      style="${e?`background:${e.c};color:${contraste(e.c)}`:''}">${dd}</span>`;
+  }
+  return `<div class="pv-mes-tit">${MESES_L[mes]}</div><div class="pv-mes">${cel}</div>`;
+}
+
+/* Empaqueta los tiles de Fijado como un mosaico: sin huecos bajo los cortos */
+function empaquetarFijados(){
+  const cont = document.querySelector('#view-inicio .notas');
+  if(!cont) return;
+  const paso = 6, hueco = 10;
+  cont.querySelectorAll(':scope > .fij-tile').forEach(el => {
+    el.style.gridRowEnd = 'auto';
+    el.style.alignSelf = 'start';
+    const alto = Math.max(el.getBoundingClientRect().height, el.scrollHeight);
+    el.style.gridRowEnd = `span ${Math.max(1, Math.ceil((alto + hueco) / (paso + hueco)))}`;
+  });
+}
+
 function renderInicio(){
   const hoy = hoyISO(), d = new Date(hoy+'T00:00:00');
 
@@ -2082,39 +2150,12 @@ function renderInicio(){
     html += `</div>`;
   }
 
-  // ---- Horario de hoy: solo las tablas marcadas con 🧭 ----
-  const dHoy = diaSemanaHoy();
-  const tablasHoy = horarios.filter(h => h.enInicio).map(h => {
-    if(h.tipo === 'semana'){
-      const huecos = (h.franjas||[])
-        .map(f => ({f, c: (h.celdas||{})[f.id+'|'+dHoy]}))
-        .filter(x => x.c && x.c.t)
-        .sort((a,b) => a.f.ini.localeCompare(b.f.ini))
-        .map(({f,c}) => ({hora:f.ini, t:c.t, c:c.c}));
-      return {h, huecos};
-    }
-    // Mensual y anual: si hoy está pintado, mostramos su etiqueta
-    const eid = (h.dias||{})[hoy];
-    const e = eid && (h.etiquetas||[]).find(x => x.id === eid);
-    return {h, huecos: e ? [{hora:'', t:e.n||'Sin nombre', c:e.c}] : []};
-  }).filter(x => x.huecos.length);
-
-  if(tablasHoy.length){
-    html += `<div class="sub-rot">Horario de hoy</div>`;
-    html += tablasHoy.map(({h, huecos}) => `<div class="tarjeta-lista">
-      ${h.nombre ? `<div class="h-nom-hoy">${esc(h.nombre)}</div>` : ''}
-      ${huecos.map(x => `<button class="mini-ev" data-horario="${h.id}">
-        <span class="marca" style="background:${x.c||'var(--muted)'}"></span>
-        <span class="h">${esc(x.hora)}</span>
-        <span class="t">${esc(x.t)}</span></button>`).join('')}
-    </div>`).join('');
-  }
-
   // ---- Lo que has anclado tú: todo como tarjeta, igual que en Notas ----
   if(anclado.length || ACCESOS_INICIO.length){
     const itemsAcceso = ACCESOS_INICIO.map(a => ({tipo:'acceso', key:'acc:'+a.id, o:a}));
+    const itemsHorario = horarios.filter(h => h.enInicio).map(h => ({tipo:'horario', key:'hor:'+h.id, o:h}));
     const itemsAnclado = anclado.map(({t, o}) => ({tipo:t, key:t+':'+o.id, o}));
-    let fijados = [...itemsAnclado, ...itemsAcceso];
+    let fijados = [...itemsHorario, ...itemsAnclado, ...itemsAcceso];
     const orden = ordenFijadoGuardado();
     if(orden.length){
       fijados = fijados.map((it, i) => ({it, i}))
@@ -2132,6 +2173,12 @@ function renderInicio(){
         const abre = o.href ? `data-href="${esc(o.href)}"` : `data-accion="${o.id}"`;
         return `<div class="nota fij-tile acceso-tile" data-key="${key}" ${abre}>
           <span class="acc-ico">${o.icono}</span><span class="acc-et">${esc(o.titulo)}</span>
+        </div>`;
+      }
+      if(tipo === 'horario'){
+        return `<div class="nota fij-tile" data-key="${key}" data-horario="${o.id}">
+          <div class="n-tit">${esc(o.nombre||'Horario')}</div>
+          ${miniPrevio(o)}
         </div>`;
       }
       const t = tipo;
@@ -2205,6 +2252,7 @@ function renderInicio(){
   el.querySelectorAll('[data-accion="gastos"]').forEach(b => b.onclick = () => { modoE = 'gastos'; irA('eventos'); });
   el.querySelectorAll('[data-horario]').forEach(b => b.onclick = () => sheetHorario(b.dataset.horario));
   activarArrastreFijados();
+  requestAnimationFrame(empaquetarFijados);
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
   if(vn) vn.onclick = () => { verTodoAhora = false; render(); };
@@ -2735,6 +2783,7 @@ function ocultarSheet(){
   document.getElementById('scrim').classList.remove('on');
   document.getElementById('sheet').classList.remove('on');
 }
+window.addEventListener('resize', () => { if(vista === 'inicio') empaquetarFijados(); });
 window.addEventListener('popstate', () => {
   if(sheetEnHistorial){ sheetEnHistorial = false; ocultarSheet(); }
 });
