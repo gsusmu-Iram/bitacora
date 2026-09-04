@@ -324,6 +324,61 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
 .fila .sw i{width:19px;height:19px;border-radius:50%;background:#fff;display:block;transition:transform .16s}
 .fila[aria-pressed="true"] .sw{background:var(--pine)}
 .fila[aria-pressed="true"] .sw i{transform:translateX(17px)}
+/* Horarios: rejilla franja × día */
+.rot-h{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.h-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.h-fila{display:flex;gap:3px;margin-bottom:3px;align-items:stretch;min-width:100%}
+.h-hora{flex:none;width:46px;font-family:"JetBrains Mono",monospace;font-size:9.5px;
+  color:var(--muted);display:flex;flex-direction:column;justify-content:center;line-height:1.35}
+.h-dia{flex:1 1 42px;min-width:42px;text-align:center;font-family:"JetBrains Mono",monospace;
+  font-size:11px;color:var(--muted)}
+.h-cab{margin-bottom:5px}
+.h-celda{flex:1 1 42px;min-width:42px;min-height:46px;border-radius:8px;border:1px dashed var(--line);
+  font-size:11px;line-height:1.2;padding:4px;overflow:hidden;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;text-align:center;word-break:break-word}
+.h-celda.llena{border-style:solid;border-color:transparent;font-weight:500}
+.h-celda.sel{outline:2px solid var(--ink);outline-offset:1px}
+.h-quita{flex:none;width:26px;color:var(--muted);font-size:17px}
+.h-editor{background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  padding:11px 12px;margin-top:12px}
+.h-editor-tit{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.h-editor input[type=color]{width:34px;height:34px;border:none;border-radius:8px;padding:0;background:none;flex:none}
+.h-editor input[id="h-txt"]{border:1px solid var(--line);border-radius:9px;padding:9px 10px;
+  font-size:14px;background:var(--surface)}
+.h-borra{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+  color:var(--oxblood);font-size:17px;flex:none}
+.tarjeta-lista{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:6px 12px;margin-bottom:14px}
+.h-nom-hoy{font-weight:600;font-size:13.5px;padding:8px 2px 2px}
+.h-barra{display:flex;gap:8px;margin:10px 0 2px}
+.h-modo{flex:1;padding:9px;border-radius:10px;border:1px solid var(--line);
+  font-size:13px;color:var(--muted);background:var(--surface)}
+.h-modo.on{background:var(--pine);border-color:var(--pine);color:#fff;font-weight:500}
+.etqs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.etq{padding:6px 12px;border-radius:99px;font-size:13px;font-weight:500;
+  border:2px solid transparent}
+.etq.on{border-color:var(--ink)}
+.pista{font-size:12.5px;color:var(--muted);margin:-4px 0 10px}
+.h-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.h-nav b{font-family:"Bricolage Grotesque",sans-serif;font-size:15px}
+.h-nav button{width:34px;height:34px;border-radius:9px;color:var(--muted);font-size:20px}
+.d-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.d-grid.dow{margin-bottom:4px}
+.d-dow{text-align:center;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted)}
+.d-cel{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;border:1px solid var(--line);color:var(--ink)}
+.d-out{visibility:hidden}
+.d-cel.hoy{font-weight:700;outline:2px solid var(--pine);outline-offset:-2px}
+.d-cel.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.anio-h{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:640px){.anio-h{grid-template-columns:repeat(3,1fr)}}
+.mini-h{border:1px solid var(--line);border-radius:10px;padding:7px}
+.mini-h-tit{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:12px;
+  text-align:center;margin-bottom:5px}
+.d-grid.mini{gap:1px}
+.d-grid.mini .d-cel{font-size:8.5px;border-radius:4px;border:none}
 .field{margin-bottom:15px}
 .field label{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;
   letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -857,13 +912,6 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:calc(var(--nav-h) +
     <div class="brand" id="brand"><span class="rosa">🧭</span> Tareas</div>
     <div style="display:flex;align-items:center;gap:7px">
       <div class="tally" id="tally"></div>
-      <button id="gastosBtn" aria-label="Gastos"
-        style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface)">
-        <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--ink);stroke-width:1.8;fill:none">
-          <circle cx="12" cy="12" r="8"/>
-          <path d="M14.3 9.3a3 3 0 1 0 0 5.4M8.7 11h4M8.7 13h4" stroke-linecap="round"/>
-        </svg>
-      </button>
       <button id="pegarBtn" aria-label="Pegar texto"
         style="width:30px;height:30px;border-radius:9px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface)">
         <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:var(--ink);stroke-width:1.8;fill:none">
@@ -1027,6 +1075,15 @@ const CATEGORIAS_BASE = ['Sin categoría','Casa','Marines','Coche','Familia','Sa
 let catPersonal = {colores:{}, iconos:{}, extra:[]};
 async function persistirCat(){ await Store.save('categorias:v1', catPersonal); }
 
+/* Horarios: tablas semanales (franja horaria × día). Cada tabla puede ir a un proyecto
+   y salir en Inicio con el 🧭, igual que el resto de módulos. */
+let horarios = [];
+async function persistirH2(){ await Store.save('horarios:v1', horarios); }
+const DIAS_H = [[1,'L'],[2,'M'],[3,'X'],[4,'J'],[5,'V'],[6,'S'],[7,'D']];
+const DIAS_H_L = {1:'Lunes',2:'Martes',3:'Miércoles',4:'Jueves',5:'Viernes',6:'Sábado',7:'Domingo'};
+// getDay(): 0 = domingo. Lo pasamos a 1 = lunes … 7 = domingo
+const diaSemanaHoy = () => { const d = new Date().getDay(); return d === 0 ? 7 : d; };
+
 // Un campo abierto: eliges de la lista o escribes una nueva
 function campoCategoria(id, valor){
   return `<div class="field"><label>Categoría</label>
@@ -1050,7 +1107,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v53';
+const VERSION_APP = 'v57';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -2025,6 +2082,34 @@ function renderInicio(){
     html += `</div>`;
   }
 
+  // ---- Horario de hoy: solo las tablas marcadas con 🧭 ----
+  const dHoy = diaSemanaHoy();
+  const tablasHoy = horarios.filter(h => h.enInicio).map(h => {
+    if(h.tipo === 'semana'){
+      const huecos = (h.franjas||[])
+        .map(f => ({f, c: (h.celdas||{})[f.id+'|'+dHoy]}))
+        .filter(x => x.c && x.c.t)
+        .sort((a,b) => a.f.ini.localeCompare(b.f.ini))
+        .map(({f,c}) => ({hora:f.ini, t:c.t, c:c.c}));
+      return {h, huecos};
+    }
+    // Mensual y anual: si hoy está pintado, mostramos su etiqueta
+    const eid = (h.dias||{})[hoy];
+    const e = eid && (h.etiquetas||[]).find(x => x.id === eid);
+    return {h, huecos: e ? [{hora:'', t:e.n||'Sin nombre', c:e.c}] : []};
+  }).filter(x => x.huecos.length);
+
+  if(tablasHoy.length){
+    html += `<div class="sub-rot">Horario de hoy</div>`;
+    html += tablasHoy.map(({h, huecos}) => `<div class="tarjeta-lista">
+      ${h.nombre ? `<div class="h-nom-hoy">${esc(h.nombre)}</div>` : ''}
+      ${huecos.map(x => `<button class="mini-ev" data-horario="${h.id}">
+        <span class="marca" style="background:${x.c||'var(--muted)'}"></span>
+        <span class="h">${esc(x.hora)}</span>
+        <span class="t">${esc(x.t)}</span></button>`).join('')}
+    </div>`).join('');
+  }
+
   // ---- Lo que has anclado tú: todo como tarjeta, igual que en Notas ----
   if(anclado.length || ACCESOS_INICIO.length){
     const itemsAcceso = ACCESOS_INICIO.map(a => ({tipo:'acceso', key:'acc:'+a.id, o:a}));
@@ -2116,7 +2201,9 @@ function renderInicio(){
   });
   el.querySelectorAll('[data-href]').forEach(b => b.onclick = () => window.open(b.dataset.href, '_blank'));
   el.querySelectorAll('[data-accion="categorias"]').forEach(b => b.onclick = () => sheetCategorias());
-  el.querySelectorAll('[data-accion="jnotes"]').forEach(b => b.onclick = () => aviso('Falta el enlace exacto de Jnotes'));
+  el.querySelectorAll('[data-accion="horarios"]').forEach(b => b.onclick = () => sheetHorarios());
+  el.querySelectorAll('[data-accion="gastos"]').forEach(b => b.onclick = () => { modoE = 'gastos'; irA('eventos'); });
+  el.querySelectorAll('[data-horario]').forEach(b => b.onclick = () => sheetHorario(b.dataset.horario));
   activarArrastreFijados();
   const vm = el.querySelector('[data-vermas]'), vn = el.querySelector('[data-vermenos]');
   if(vm) vm.onclick = () => { verTodoAhora = true; render(); };
@@ -2692,6 +2779,337 @@ function autoAlto(id){
   requestAnimationFrame(ajusta);
 }
 
+/* ---------- Horarios ---------- */
+const TIPOS_H = [['semana','Semanal','Franjas horarias × días'],
+                 ['mes','Mensual','Un mes, pintando días'],
+                 ['anio','Anual','Los 12 meses de un vistazo']];
+
+function sheetHorarios(){
+  abrirSheet(`<div class="grip"></div>
+    <div class="rot-sheet">Horarios</div>
+    ${horarios.length ? `<div class="filas">${horarios.map(h => {
+      const n = h.tipo === 'semana'
+        ? Object.values(h.celdas||{}).filter(c => c && c.t).length
+        : Object.keys(h.dias||{}).length;
+      const tp = (TIPOS_H.find(t => t[0] === h.tipo)||TIPOS_H[0])[1];
+      return `<button class="fila" data-abrirh="${h.id}">
+        <span class="et">${ICO.cal}${esc(h.nombre||'Sin nombre')}</span>
+        <span style="margin-left:auto;font-size:12.5px;color:var(--muted);text-align:right">
+          ${h.enInicio?'🧭 ':''}${tp}<br>${n} ${n===1?'marca':'marcas'}</span>
+      </button>`;
+    }).join('')}</div>`
+    : `<div class="dia-vacio" style="margin:10px 0 4px">Todavía no hay ninguna tabla</div>`}
+    <div class="rot-h" style="margin-top:18px">Nueva tabla</div>
+    <div class="filas">${TIPOS_H.map(([k,l,d]) => `<button class="fila" data-nuevah="${k}">
+      <span class="et">${ICO.cal}<span>${l}<br><span style="font-size:12px;color:var(--muted)">${d}</span></span></span>
+      <span style="margin-left:auto;color:var(--pine);font-size:19px">+</span></button>`).join('')}</div>`);
+  document.querySelectorAll('[data-abrirh]').forEach(b => b.onclick = () => sheetHorario(b.dataset.abrirh));
+  document.querySelectorAll('[data-nuevah]').forEach(b => b.onclick = async () => {
+    const hoy = new Date();
+    const h = {id:uid(), tipo:b.dataset.nuevah, nombre:'', proyecto:'', enInicio:false,
+      etiquetas:[], celdas:{}, dias:{},
+      franjas:[{id:uid(), ini:'08:00', fin:'09:00'}],
+      anio:hoy.getFullYear(), mes:hoy.getMonth()};
+    horarios.push(h); await persistirH2(); sheetHorario(h.id);
+  });
+}
+
+let celdaSel = null;    // celda de la semana que estás editando a mano
+let etqSel = null;      // etiqueta activa: si hay una, tocar pinta con ella
+let modoRango = false;  // pintar de un toque a otro en vez de uno a uno
+let rangoIni = null;
+
+function sheetHorario(id){
+  const h = horarios.find(x => x.id === id); if(!h) return;
+  celdaSel = null; etqSel = null; modoRango = false; rangoIni = null;
+  abrirSheet(`<div class="grip"></div>
+    <div class="rot-sheet">${(TIPOS_H.find(t=>t[0]===h.tipo)||TIPOS_H[0])[1]}</div>
+    <textarea id="h-nom" class="tit-grande" rows="1" placeholder="Nombre de la tabla">${esc(h.nombre||'')}</textarea>
+    <div class="filas">
+      ${fila(ICO.proy, 'Proyecto', `<input id="x-proy" list="listaProy" value="${esc(h.proyecto||'')}" placeholder="Sin proyecto">
+        <datalist id="listaProy">${proyectos().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`)}
+      <button class="fila" id="x-inicio" aria-pressed="${h.enInicio?'true':'false'}">
+        <span class="et">${ICO.brujula}Mostrar en Inicio</span><span class="sw"><i></i></span></button>
+    </div>
+    <div id="h-zona" style="margin-top:16px"></div>
+    <div class="sheet-actions"><button class="btn-save" id="h-save">Listo</button>
+      <button class="btn-del" id="h-del">Borrar</button></div>`);
+  checkClick('x-inicio');
+  autoAlto('h-nom');
+  pintarHorario(id);
+  ['h-nom','x-proy'].forEach(k => {
+    const c = document.getElementById(k);
+    if(c) c.addEventListener('input', () => { recogerHorario(id); persistirH2(); });
+  });
+  const sw = document.getElementById('x-inicio');
+  if(sw) sw.addEventListener('click', () => { setTimeout(() => { recogerHorario(id); persistirH2(); }, 0); });
+  document.getElementById('h-save').onclick = async () => {
+    recogerHorario(id); await persistirH2(); render(); cerrarSheet();
+  };
+  document.getElementById('h-del').onclick = async () => {
+    if(!confirm(`¿Borrar la tabla "${h.nombre||'sin nombre'}"?`)) return;
+    horarios = horarios.filter(x => x.id !== id);
+    await persistirH2(); cerrarSheet(); render(); aviso('Tabla borrada');
+  };
+}
+
+function recogerHorario(id){
+  const h = horarios.find(x => x.id === id); if(!h) return;
+  const n = document.getElementById('h-nom'), p = document.getElementById('x-proy'),
+        i = document.getElementById('x-inicio');
+  if(n) h.nombre = n.value.trim();
+  if(p) h.proyecto = p.value.trim();
+  if(i) h.enInicio = i.getAttribute('aria-pressed') === 'true';
+}
+
+/* La leyenda: etiquetas propias de cada tabla. Con una activa, tocar pinta. */
+function zonaLeyenda(h){
+  return `<div class="rot-h" style="margin-top:16px">Leyenda</div>
+    ${h.etiquetas.length ? `<div class="etqs">${h.etiquetas.map(e => `
+      <button class="etq${etqSel===e.id?' on':''}" data-etq="${e.id}"
+        style="background:${e.c};color:${contraste(e.c)}">${esc(e.n||'Sin nombre')}</button>`).join('')}
+      </div>` : `<div class="dia-vacio" style="margin:2px 0 8px">Aún no hay etiquetas</div>`}
+    ${etqSel ? `<div class="pista">Pintando con esta etiqueta. Tócala otra vez para dejar de pintar.</div>` : ''}
+    <div class="filas">${h.etiquetas.map(e => `<div class="fila">
+      <input type="color" value="${e.c}" data-ec="${e.id}" style="flex:none;width:32px;height:32px;border:none;padding:0;background:none">
+      <input value="${esc(e.n||'')}" data-en="${e.id}" placeholder="Nombre" style="text-align:left">
+      <button class="h-borra" data-eq="${e.id}" aria-label="Quitar">×</button>
+    </div>`).join('')}</div>
+    <button class="add-campo" id="h-adde"><b>+</b> Añadir etiqueta</button>`;
+}
+
+function pintarHorario(id){
+  const h = horarios.find(x => x.id === id); if(!h) return;
+  const z = document.getElementById('h-zona'); if(!z) return;
+
+  const barra = `<div class="h-barra">
+    <button class="h-modo${modoRango?' on':''}" id="h-rango">${modoRango?'Rango: toca inicio y fin':'Marcar uno a uno'}</button>
+  </div>`;
+
+  z.innerHTML = (h.tipo === 'semana' ? gridSemana(h) : (h.tipo === 'mes' ? gridMes(h) : gridAnio(h)))
+    + (h.tipo === 'semana' ? '' : barra)
+    + zonaLeyenda(h)
+    + (h.tipo === 'semana' ? franjasHTML(h) : '');
+
+  const guarda = () => persistirH2();
+
+  // --- Leyenda ---
+  z.querySelectorAll('[data-etq]').forEach(b => b.onclick = () => {
+    etqSel = etqSel === b.dataset.etq ? null : b.dataset.etq;
+    rangoIni = null; celdaSel = null; pintarHorario(id);
+  });
+  z.querySelectorAll('[data-ec]').forEach(i => i.oninput = () => {
+    const e = h.etiquetas.find(x => x.id === i.dataset.ec); if(e) e.c = i.value;
+    guarda(); pintarHorario(id);
+  });
+  z.querySelectorAll('[data-en]').forEach(i => i.oninput = () => {
+    const e = h.etiquetas.find(x => x.id === i.dataset.en); if(e) e.n = i.value;
+    guarda();
+    const chip = z.querySelector(`[data-etq="${i.dataset.en}"]`);
+    if(chip) chip.textContent = i.value || 'Sin nombre';
+  });
+  z.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => {
+    const eid = b.dataset.eq;
+    h.etiquetas = h.etiquetas.filter(x => x.id !== eid);
+    Object.keys(h.dias).forEach(k => { if(h.dias[k] === eid) delete h.dias[k]; });
+    if(etqSel === eid) etqSel = null;
+    guarda(); pintarHorario(id);
+  });
+  const adde = document.getElementById('h-adde');
+  if(adde) adde.onclick = () => {
+    h.etiquetas.push({id:uid(), n:'', c:PALETA_ETQ[h.etiquetas.length % PALETA_ETQ.length]});
+    guarda(); pintarHorario(id);
+  };
+
+  const rg = document.getElementById('h-rango');
+  if(rg) rg.onclick = () => { modoRango = !modoRango; rangoIni = null; pintarHorario(id); };
+
+  if(h.tipo === 'semana') enlazarSemana(h, id, z, guarda);
+  else enlazarDias(h, id, z, guarda);
+}
+
+/* ---- Semanal ---- */
+function gridSemana(h){
+  const cab = `<div class="h-fila h-cab"><span class="h-hora"></span>
+    ${DIAS_H.map(([d,l]) => `<span class="h-dia">${l}</span>`).join('')}</div>`;
+  const cuerpo = h.franjas.map(f => `<div class="h-fila">
+      <span class="h-hora">${esc(f.ini)}<br>${esc(f.fin)}</span>
+      ${DIAS_H.map(([d]) => {
+        const k = f.id+'|'+d, c = h.celdas[k];
+        const sel = (celdaSel === k || rangoIni === k) ? ' sel' : '';
+        return `<button class="h-celda${sel}${c&&c.t?' llena':''}" data-celda="${k}"
+          style="${c&&c.t?`background:${c.c||'#DCE3DB'};color:${contraste(c.c)}`:''}">${c&&c.t?esc(c.t):''}</button>`;
+      }).join('')}
+      <button class="h-quita" data-quitaf="${f.id}" aria-label="Quitar franja">×</button>
+    </div>`).join('');
+  let editor = '';
+  if(celdaSel && !etqSel){
+    const [fid, d] = celdaSel.split('|');
+    const f = h.franjas.find(x => x.id === fid);
+    const c = h.celdas[celdaSel] || {t:'', c:'#B0802A'};
+    editor = `<div class="h-editor">
+      <div class="h-editor-tit">${DIAS_H_L[d]} · ${f?esc(f.ini):''}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="color" id="h-color" value="${c.c||'#B0802A'}">
+        <input id="h-txt" value="${esc(c.t||'')}" placeholder="Asignatura, turno…" style="flex:1">
+        <button class="h-borra" id="h-vaciar" aria-label="Vaciar">×</button>
+      </div></div>`;
+  }
+  return `<div class="rot-h">Rejilla</div><div class="h-scroll">${cab}${cuerpo}</div>
+    <button class="add-campo" id="h-addf"><b>+</b> Añadir franja</button>
+    <div class="h-barra"><button class="h-modo${modoRango?' on':''}" id="h-rango">${modoRango?'Rango: toca inicio y fin':'Marcar uno a uno'}</button></div>
+    ${editor}`;
+}
+function franjasHTML(h){
+  return `<div class="rot-h" style="margin-top:14px">Franjas</div>
+    <div class="filas">${h.franjas.map(f => `<div class="fila">
+      <span class="et">${ICO.cal}</span>
+      <input type="time" value="${esc(f.ini)}" data-fini="${f.id}" style="flex:none;width:88px">
+      <span style="color:var(--muted)">→</span>
+      <input type="time" value="${esc(f.fin)}" data-ffin="${f.id}" style="flex:none;width:88px">
+    </div>`).join('')}</div>`;
+}
+function enlazarSemana(h, id, z, guarda){
+  const idxF = fid => h.franjas.findIndex(x => x.id === fid);
+  z.querySelectorAll('[data-celda]').forEach(b => b.onclick = () => {
+    const k = b.dataset.celda;
+    const etq = etqSel ? h.etiquetas.find(x => x.id === etqSel) : null;
+    if(modoRango){
+      if(!rangoIni){ rangoIni = k; celdaSel = null; return pintarHorario(id); }
+      const [f1,d1] = rangoIni.split('|'), [f2,d2] = k.split('|');
+      const fa = Math.min(idxF(f1), idxF(f2)), fb = Math.max(idxF(f1), idxF(f2));
+      const da = Math.min(+d1, +d2), db = Math.max(+d1, +d2);
+      for(let i = fa; i <= fb; i++) for(let d = da; d <= db; d++){
+        const kk = h.franjas[i].id+'|'+d;
+        if(etq) h.celdas[kk] = {t:etq.n||'', c:etq.c};
+        else delete h.celdas[kk];
+      }
+      rangoIni = null; guarda(); return pintarHorario(id);
+    }
+    if(etq){
+      const act = h.celdas[k];
+      if(act && act.t === (etq.n||'') && act.c === etq.c) delete h.celdas[k];
+      else h.celdas[k] = {t:etq.n||'', c:etq.c};
+      guarda(); return pintarHorario(id);
+    }
+    celdaSel = celdaSel === k ? null : k;
+    pintarHorario(id);
+  });
+  z.querySelectorAll('[data-quitaf]').forEach(b => b.onclick = () => {
+    const fid = b.dataset.quitaf;
+    if(h.franjas.length <= 1) return aviso('Deja al menos una franja');
+    h.franjas = h.franjas.filter(x => x.id !== fid);
+    Object.keys(h.celdas).forEach(k => { if(k.startsWith(fid+'|')) delete h.celdas[k]; });
+    if(celdaSel && celdaSel.startsWith(fid+'|')) celdaSel = null;
+    guarda(); pintarHorario(id);
+  });
+  z.querySelectorAll('[data-fini]').forEach(i => i.onchange = () => {
+    const f = h.franjas.find(x => x.id === i.dataset.fini); if(f) f.ini = i.value;
+    guarda(); pintarHorario(id);
+  });
+  z.querySelectorAll('[data-ffin]').forEach(i => i.onchange = () => {
+    const f = h.franjas.find(x => x.id === i.dataset.ffin); if(f) f.fin = i.value;
+    guarda(); pintarHorario(id);
+  });
+  const addf = document.getElementById('h-addf');
+  if(addf) addf.onclick = () => {
+    const ult = h.franjas[h.franjas.length-1];
+    h.franjas.push({id:uid(), ini:ult?ult.fin:'08:00', fin:sumaHora(ult?ult.fin:'08:00', 60)});
+    guarda(); pintarHorario(id);
+  };
+  const txt = document.getElementById('h-txt'), col = document.getElementById('h-color');
+  if(txt){
+    const escribe = () => {
+      const t = txt.value.trim();
+      if(t) h.celdas[celdaSel] = {t, c: col.value}; else delete h.celdas[celdaSel];
+      const b = z.querySelector(`[data-celda="${celdaSel}"]`);
+      if(b){ b.textContent = t; b.style.background = t ? col.value : ''; b.style.color = t ? contraste(col.value) : ''; }
+      guarda();
+    };
+    txt.oninput = escribe; col.oninput = escribe; txt.focus();
+    document.getElementById('h-vaciar').onclick = () => {
+      delete h.celdas[celdaSel]; celdaSel = null; guarda(); pintarHorario(id);
+    };
+  }
+}
+
+/* ---- Mensual y anual: pintar días con las etiquetas ---- */
+function celdasMes(h, anio, mes, mini){
+  const pd = new Date(anio, mes, 1).getDay();
+  const ini = pd === 0 ? 6 : pd - 1;
+  const total = new Date(anio, mes+1, 0).getDate();
+  const hoy = hoyISO();
+  let out = '';
+  for(let i = 0; i < ini; i++) out += `<span class="d-out"></span>`;
+  for(let d = 1; d <= total; d++){
+    const f = `${anio}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const e = h.etiquetas.find(x => x.id === h.dias[f]);
+    const cls = [f===hoy?'hoy':'', rangoIni===f?'sel':''].filter(Boolean).join(' ');
+    const st = e ? `background:${e.c};color:${contraste(e.c)}` : '';
+    out += `<button class="d-cel ${cls}" data-dia2="${f}" style="${st}">${d}</button>`;
+  }
+  return `<div class="d-grid${mini?' mini':''}">${out}</div>`;
+}
+function gridMes(h){
+  const dow = DIAS_H.map(([d,l]) => `<span class="d-dow">${l}</span>`).join('');
+  return `<div class="h-nav">
+      <button data-hmes="-1">‹</button>
+      <b>${MESES_L[h.mes]} ${h.anio}</b>
+      <button data-hmes="1">›</button></div>
+    <div class="d-grid dow">${dow}</div>
+    ${celdasMes(h, h.anio, h.mes, false)}`;
+}
+function gridAnio(h){
+  return `<div class="h-nav">
+      <button data-hanio="-1">‹</button><b>${h.anio}</b><button data-hanio="1">›</button></div>
+    <div class="anio-h">${MESES_L.map((m,i) => `<div class="mini-h">
+      <div class="mini-h-tit">${m}</div>${celdasMes(h, h.anio, i, true)}</div>`).join('')}</div>`;
+}
+function enlazarDias(h, id, z, guarda){
+  z.querySelectorAll('[data-hmes]').forEach(b => b.onclick = () => {
+    h.mes += Number(b.dataset.hmes);
+    if(h.mes < 0){ h.mes = 11; h.anio--; } if(h.mes > 11){ h.mes = 0; h.anio++; }
+    guarda(); pintarHorario(id);
+  });
+  z.querySelectorAll('[data-hanio]').forEach(b => b.onclick = () => {
+    h.anio += Number(b.dataset.hanio); guarda(); pintarHorario(id);
+  });
+  z.querySelectorAll('[data-dia2]').forEach(b => b.onclick = () => {
+    const f = b.dataset.dia2;
+    if(!etqSel && !modoRango){
+      if(h.dias[f]){ delete h.dias[f]; guarda(); return pintarHorario(id); }
+      return aviso('Elige antes una etiqueta de la leyenda');
+    }
+    if(modoRango){
+      if(!rangoIni){ rangoIni = f; return pintarHorario(id); }
+      const [a,b2] = [rangoIni, f].sort();
+      for(let d = new Date(a+'T00:00:00'); iso(d) <= b2; d.setDate(d.getDate()+1)){
+        if(etqSel) h.dias[iso(d)] = etqSel; else delete h.dias[iso(d)];
+      }
+      rangoIni = null; guarda(); return pintarHorario(id);
+    }
+    h.dias[f] = h.dias[f] === etqSel ? undefined : etqSel;
+    if(!h.dias[f]) delete h.dias[f];
+    guarda(); pintarHorario(id);
+  });
+}
+
+const PALETA_ETQ = ['#C2743F','#8A9B4F','#2C5F4A','#6F5FA8','#3E8A82','#8E2F26','#B0802A','#3E6E8E'];
+
+// Sobre un color claro el texto blanco no se lee: elegimos claro u oscuro según su luminosidad
+function contraste(hex){
+  const c = (hex||'').replace('#','');
+  if(c.length !== 6) return '#fff';
+  const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#16221D' : '#fff';
+}
+// Suma minutos a una hora "HH:MM"
+function sumaHora(hm, min){
+  const [h,m] = (hm||'08:00').split(':').map(Number);
+  const t = (h*60 + m + min) % 1440;
+  return String(Math.floor(t/60)).padStart(2,'0') + ':' + String(t%60).padStart(2,'0');
+}
+
 /* ---------- Categorías ---------- */
 function sheetCategorias(){
   const lista = categorias().filter(c => c !== 'Sin categoría');
@@ -2904,9 +3322,9 @@ async function borrarEvento(){
    DATOS — fichas de referencia
    ============================================================ */
 
-const ICONOS = {'Sin categoría':'📋', Casa:'🏠', Marines:'🧱', Coche:'🚗', Familia:'👪',
-  Salud:'🩺', Trabajo:'🔧', 'Trámites':'📄', Finanzas:'🏦', Compras:'🛒', Ocio:'🎬',
-  'Películas':'🎬', Recetas:'🍳', Documentos:'📄', Medidas:'📐', Personal:'👤'};
+const ICONOS = {'Sin categoría':'📋', Casa:'🏠', Marines:'🏡', Coche:'🚗', Familia:'👪',
+  Salud:'🩺', Trabajo:'🔧', 'Trámites':'📄', Finanzas:'🪙', Compras:'🛒', Ocio:'🧩',
+  'Películas':'🎬', Recetas:'🍳', Documentos:'📁', Medidas:'📐', Personal:'👤'};
 const ICONOS_LC = Object.fromEntries(Object.entries(ICONOS).map(([k,v]) => [k.toLowerCase(), v]));
 const iconoCat = c => {
   const k = (c||'').toLowerCase();
@@ -2914,11 +3332,9 @@ const iconoCat = c => {
 };
 
 const ACCESOS_INICIO = [
-  {id:'gmail', icono:'📧', titulo:'Gmail', href:'https://mail.google.com/'},
   {id:'calendar', icono:'📅', titulo:'Calendar', href:'https://calendar.google.com/'},
-  {id:'drive', icono:'📁', titulo:'Drive', href:'https://drive.google.com/'},
-  {id:'whatsapp', icono:'💬', titulo:'WhatsApp', href:'whatsapp://'},
-  {id:'jnotes', icono:'📝', titulo:'Jnotes', href:'android-app://com.jideos.jnotes.overseas.google'},
+  {id:'horarios', icono:'🗓️', titulo:'Horarios', href:null},
+  {id:'gastos', icono:'💶', titulo:'Gastos', href:null},
   {id:'categorias', icono:'🏷️', titulo:'Categorías', href:null}
 ];
 function ordenFijadoGuardado(){
@@ -4409,7 +4825,7 @@ function copiaJSON(conImagenes = true){
   const limpiar = arr => conImagenes ? arr : arr.map(x => { const y = {...x}; delete y.imagen; return y; });
   return JSON.stringify({
     version:2, fecha:new Date().toISOString(), ultimaEdicion, imagenes:conImagenes,
-    tareas:limpiar(tareas), eventos:limpiar(eventos), notas, fichas
+    tareas:limpiar(tareas), eventos:limpiar(eventos), notas, fichas, horarios, catPersonal
   }, null, 2);
 }
 const pesoCopia = con => {
@@ -4568,6 +4984,9 @@ function elegirCopia(){
                 'Al restaurar se reemplaza TODO lo de este aparato. ¿Seguir?')) return;
 
     tareas = d.tareas || []; eventos = d.eventos || []; notas = d.notas || []; fichas = d.fichas || [];
+    horarios = d.horarios || [];
+    if(d.catPersonal) catPersonal = {colores:d.catPersonal.colores||{},
+      iconos:d.catPersonal.iconos||{}, extra:d.catPersonal.extra||[]};
     vacia = true; await Store.save('vacia:v1', true);
     ultimaEdicion = fechaArchivo || new Date().toISOString();
     await Store.save('ultimaEdicion:v1', ultimaEdicion);
@@ -4577,6 +4996,7 @@ function elegirCopia(){
         x.contenido = x.contenido.replace(/&amp;(amp|nbsp|lt|gt|quot|#39);/gi, '&$1;');
     });
     await persistirT(); await persistirE(); await persistirN(); await persistirD();
+    await persistirH2(); await persistirCat();
     cerrarSheet(); irA('inicio');
     aviso(d.imagenes === false ? `Restaurados ${n} elementos (sin fotos)` : `Restaurados ${n} elementos`);
   };
@@ -5600,7 +6020,6 @@ document.getElementById('nav').addEventListener('click', e => {
   b.setAttribute('aria-current','page');
   window.scrollTo(0,0); render();
 });
-document.getElementById('gastosBtn').onclick = () => { modoE = 'gastos'; irA('eventos'); };
 document.getElementById('pegarBtn').onclick = () => abrirPegar();
 document.getElementById('menuBtn').onclick = menuCopias;
 document.getElementById('scrim').onclick = cerrarSheet;
@@ -5655,6 +6074,18 @@ function recibirCompartido(){
   papelera = (await Store.load('papelera:v1')) || [];
   const cp = await Store.load('categorias:v1');
   if(cp) catPersonal = {colores: cp.colores||{}, iconos: cp.iconos||{}, extra: cp.extra||[]};
+  horarios = (await Store.load('horarios:v1')) || [];
+  // Las tablas creadas antes de que hubiera tipos se quedan como semanales
+  const ah = new Date();
+  horarios.forEach(h => {
+    h.tipo = h.tipo || 'semana';
+    h.etiquetas = h.etiquetas || [];
+    h.dias = h.dias || {};
+    h.celdas = h.celdas || {};
+    h.franjas = h.franjas && h.franjas.length ? h.franjas : [{id:uid(), ini:'08:00', fin:'09:00'}];
+    if(h.anio == null) h.anio = ah.getFullYear();
+    if(h.mes == null) h.mes = ah.getMonth();
+  });
   Store.pedirPermanencia();
   calSel = hoyISO();
   ajustarHueco();
