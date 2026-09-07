@@ -1125,7 +1125,7 @@ function categorias(){
   return [...CATEGORIAS_BASE, ...[...new Set(extra)].sort()];
 }
 
-const VERSION_APP = 'v60';
+const VERSION_APP = 'v62';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -2505,6 +2505,8 @@ function abrirEditor(id){
           <svg viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z" stroke-linejoin="round"/></svg></button>
         ${n.tipo === 'lista' ? `<button class="ed-ico" data-atexto aria-label="Convertir en texto">
           <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9" stroke-linecap="round"/></svg></button>` : ''}
+        <button class="ed-ico" data-compartir aria-label="Compartir">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.4 10.8 7.2-4.2M8.4 13.2l7.2 4.2" stroke-linecap="round"/></svg></button>
         <button class="ed-ico borrar" data-borrar aria-label="Borrar">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
@@ -2536,6 +2538,19 @@ function abrirEditor(id){
 
   ed.querySelector('[data-cerrar]').onclick = cerrarEditor;
   ed.querySelector('[data-borrar]').onclick = borrarDesdeEditor;
+  ed.querySelector('[data-compartir]').onclick = () => {
+    const nn = notas.find(x => x.id === notaAbierta); if(!nn) return;
+    const tit = document.getElementById('edTit').value.trim();
+    const b = document.getElementById('edBody');
+    const items = nn.tipo === 'lista'
+      ? [...document.querySelectorAll('#edItems [data-txt]')].map(i => {
+          const it = (nn.items||[]).find(x => x.id === i.dataset.txt);
+          return {txt:i.value, hecho: it ? it.hecho : false};
+        }).filter(x => x.txt.trim())
+      : nn.items;
+    compartirTexto(textoNota({...nn, titulo:tit,
+      contenido: b ? b.innerHTML : nn.contenido, items}), tit);
+  };
   const pin = ed.querySelector('[data-pin2]');
   pin.onclick = () => pin.setAttribute('aria-pressed', pin.getAttribute('aria-pressed')==='true'?'false':'true');
   enlazarQuitarProyecto();
@@ -2815,7 +2830,8 @@ const ICO = {
   brujula: svgIco('<circle cx="12" cy="12" r="8"/><path d="m15 9-2.2 4.8L8 16l2.2-4.8L15 9z" stroke-linejoin="round"/>'),
   lock: svgIco('<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'),
   pri: svgIco('<path d="M6 21V4M6 4h11l-2.5 4L17 12H6" stroke-linecap="round" stroke-linejoin="round"/>'),
-  ficha: svgIco('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5" stroke-linecap="round"/>')
+  ficha: svgIco('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5" stroke-linecap="round"/>'),
+  share: svgIco('<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.4 10.8 7.2-4.2M8.4 13.2l7.2 4.2" stroke-linecap="round"/>')
 };
 function fila(ico, etiqueta, control){
   return `<div class="fila"><span class="et">${ico}${etiqueta}</span>${control}</div>`;
@@ -3109,10 +3125,22 @@ function gridMes(h){
     ${celdasMes(h, h.anio, h.mes, false)}`;
 }
 function gridAnio(h){
+  const ini = h.mesIni || 0;
+  const titulo = ini === 0 ? `${h.anio}` : `${h.anio}-${h.anio+1}`;
+  const meses = Array.from({length:12}, (_,k) => {
+    const m = (ini + k) % 12;
+    return {m, anio: h.anio + (ini + k >= 12 ? 1 : 0)};
+  });
   return `<div class="h-nav">
-      <button data-hanio="-1">‹</button><b>${h.anio}</b><button data-hanio="1">›</button></div>
-    <div class="anio-h">${MESES_L.map((m,i) => `<div class="mini-h">
-      <div class="mini-h-tit">${m}</div>${celdasMes(h, h.anio, i, true)}</div>`).join('')}</div>`;
+      <button data-hanio="-1">‹</button><b>${titulo}</b><button data-hanio="1">›</button></div>
+    <div class="filas" style="margin-bottom:12px">
+      ${fila(ICO.cal, 'Empieza en', `<select id="h-mesini">
+        ${MESES_L.map((m,i) => `<option value="${i}" ${ini===i?'selected':''}>${m}</option>`).join('')}
+      </select>`)}
+    </div>
+    <div class="anio-h">${meses.map(({m, anio}) => `<div class="mini-h">
+      <div class="mini-h-tit">${MESES_L[m]}${ini!==0&&m===0?` <span style="color:var(--muted);font-weight:400">${anio}</span>`:''}</div>
+      ${celdasMes(h, anio, m, true)}</div>`).join('')}</div>`;
 }
 function enlazarDias(h, id, z, guarda){
   z.querySelectorAll('[data-hmes]').forEach(b => b.onclick = () => {
@@ -3123,6 +3151,8 @@ function enlazarDias(h, id, z, guarda){
   z.querySelectorAll('[data-hanio]').forEach(b => b.onclick = () => {
     h.anio += Number(b.dataset.hanio); guarda(); pintarHorario(id);
   });
+  const mi = document.getElementById('h-mesini');
+  if(mi) mi.onchange = () => { h.mesIni = Number(mi.value); guarda(); pintarHorario(id); };
   z.querySelectorAll('[data-dia2]').forEach(b => b.onclick = () => {
     const f = b.dataset.dia2;
     if(!etqSel && !modoRango){
@@ -3227,6 +3257,9 @@ function sheetTarea(id){
       <button class="fila" id="x-priv" aria-pressed="${t.privado?'true':'false'}">
         <span class="et">${ICO.lock}Privado</span><span class="sw"><i></i></span></button>
       ${fila(ICO.nota, 'Notas', `<textarea id="f-not" rows="1" placeholder="Añadir">${esc(t.notas||'')}</textarea>`)}
+      <button class="fila" id="f-share">
+        <span class="et">${ICO.share}Compartir</span>
+        <span style="margin-left:auto;color:var(--pine);font-size:14px">Enviar</span></button>
     </div>
     ${t.imagen?`<div class="field" style="margin-top:14px"><label>Comprobante</label>
       <div class="comprobante"><img src="${t.imagen}" alt="Comprobante">
@@ -3237,6 +3270,12 @@ function sheetTarea(id){
   autoAlto('f-tit'); autoAlto('f-not');
   const tci = document.getElementById('f-cat'), tcp = document.getElementById('f-cat-punto');
   if(tci && tcp) tci.oninput = () => { tcp.style.background = colorCat(tci.value.trim() || 'Sin categoría'); };
+  document.getElementById('f-share').onclick = () => {
+    const ti = document.getElementById('f-tit').value.trim();
+    compartirTexto(textoTarea({...t, titulo:ti,
+      notas: document.getElementById('f-not').value.trim(),
+      proyecto: leerProyecto()}), ti);
+  };
   const qit = document.querySelector('[data-quitarimg]');
   if(qit) qit.onclick = async () => { t.imagen = ''; await persistirT(); sheetTarea(id); };
   document.getElementById('f-save').onclick = guardarTarea;
@@ -3299,6 +3338,9 @@ function sheetEvento(id){
       <button class="fila" id="x-priv" aria-pressed="${e.privado?'true':'false'}">
         <span class="et">${ICO.lock}Privado</span><span class="sw"><i></i></span></button>
       ${fila(ICO.nota, 'Notas', `<textarea id="e-not" rows="1" placeholder="Añadir">${esc(e.notas||'')}</textarea>`)}
+      <button class="fila" id="e-share">
+        <span class="et">${ICO.share}Compartir</span>
+        <span style="margin-left:auto;color:var(--pine);font-size:14px">Enviar</span></button>
     </div>
     ${e.imagen?`<div class="field" style="margin-top:14px"><label>Comprobante</label>
       <div class="comprobante"><img src="${e.imagen}" alt="Comprobante">
@@ -3311,6 +3353,12 @@ function sheetEvento(id){
   autoAlto('e-tit'); autoAlto('e-not');
   const ci = document.getElementById('e-cat'), cp = document.getElementById('e-cat-punto');
   if(ci && cp) ci.oninput = () => { cp.style.background = colorCat(ci.value.trim() || 'Sin categoría'); };
+  document.getElementById('e-share').onclick = () => {
+    const t = document.getElementById('e-tit').value.trim();
+    compartirTexto(textoEvento({...e, titulo:t,
+      notas: document.getElementById('e-not').value.trim(),
+      lugar: document.getElementById('e-lug').value.trim()}), t);
+  };
   const qi = document.querySelector('[data-quitarimg]');
   if(qi) qi.onclick = async () => { e.imagen = ''; await persistirE(); sheetEvento(id); };
   document.getElementById('e-cal').onclick = async () => { await guardarEvento(); menuCalendario(id); };
@@ -4890,6 +4938,55 @@ async function exportarCopia(){
 }
 
 // ¿Puede este navegador abrir el menú de compartir con archivos?
+/* Compartir un elemento suelto como texto: sale el menú de Android y lo mandas
+   por WhatsApp, correo, etc. Quien lo reciba puede pegarlo en el botón de pegar. */
+function fechaLegible(f, hora){
+  if(!f) return '';
+  const d = new Date(f+'T00:00:00');
+  const dia = DIAS[d.getDay()];
+  return `${dia.charAt(0).toUpperCase()+dia.slice(1)} ${d.getDate()} ${MESES_L[d.getMonth()].toLowerCase()}`
+    + (hora ? ` · ${hora}` : '');
+}
+function textoEvento(e){
+  const l = [e.titulo];
+  const f = fechaLegible(fechaEfectiva(e), e.hora);
+  if(f) l.push(e.fechaFin && e.fechaFin !== e.fecha
+    ? `${f} → ${fechaLegible(e.fechaFin)}` : f);
+  if(e.lugar) l.push(`📍 ${e.lugar}`);
+  if(e.coste) l.push(`${eur(e.coste)}`);
+  if(e.notas) l.push('', e.notas);
+  return l.join('\n');
+}
+function textoTarea(t){
+  const l = [t.titulo];
+  if(t.fechaLimite) l.push(`Para el ${fechaLegible(t.fechaLimite)}`);
+  if(t.proyecto) l.push(`◈ ${t.proyecto}`);
+  if(t.notas) l.push('', t.notas);
+  return l.join('\n');
+}
+function textoNota(n){
+  const l = [];
+  if(n.titulo) l.push(n.titulo);
+  if(n.tipo === 'lista'){
+    (n.items||[]).forEach(i => l.push(`${i.hecho?'☑':'☐'} ${i.txt}`));
+  } else if(n.contenido){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = n.contenido;
+    l.push(tmp.textContent.trim());
+  }
+  return l.join('\n');
+}
+async function compartirTexto(txt, titulo){
+  if(!txt || !txt.trim()) return aviso('No hay nada que compartir');
+  try{
+    if(navigator.share){ await navigator.share({text:txt, title:titulo||''}); return; }
+  }catch(err){ if(err && err.name === 'AbortError') return; }
+  try{
+    await navigator.clipboard.writeText(txt);
+    aviso('Copiado: pégalo donde quieras');
+  }catch(e){ aviso('No se ha podido compartir'); }
+}
+
 function sePuedeCompartir(){
   try{
     if(!navigator.canShare) return false;
